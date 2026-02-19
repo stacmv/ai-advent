@@ -152,22 +152,19 @@ if (!$token) {
 
 echo "\n[+] Token received!\n";
 
-// Step 4: Test the token via WebDAV
+// Step 4: Test the token via REST API (cloud_api:disk.info)
 echo "[*] Testing token...\n";
 try {
-    $testResponse = $client->request('PROPFIND', 'https://webdav.yandex.ru/', [
-        'headers' => [
-            'Authorization' => 'OAuth ' . $token,
-            'Depth' => '0',
-        ],
+    $testResponse = $client->get('https://cloud-api.yandex.net/v1/disk/', [
+        'headers' => ['Authorization' => 'OAuth ' . $token],
         'http_errors' => false,
     ]);
 
     $code = $testResponse->getStatusCode();
-    if ($code === 207 || $code === 200) {
+    if ($code === 200) {
         echo "[+] Token is valid!\n";
     } else {
-        echo "[!] Warning: WebDAV test returned HTTP {$code} (token may still work)\n";
+        echo "[!] Warning: Disk API returned HTTP {$code} (token may still work)\n";
     }
 } catch (Exception $e) {
     echo "[!] Warning: Could not test token: " . $e->getMessage() . "\n";
