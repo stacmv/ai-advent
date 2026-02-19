@@ -56,9 +56,31 @@ cp .env.example .env
    - `YANDEX_FOLDER_ID=b1g...`
 
 #### Yandex.Disk (for video upload)
+
+**Option 1: Automatic Token Generation (Recommended)**
+```bash
+make get-token
+```
+Or:
+```bash
+php tools/get_yandex_token.php
+```
+
+This will guide you through getting a token and automatically save it to `.env`.
+
+**Option 2: Manual Token (Implicit Flow)**
 1. Visit: `https://oauth.yandex.ru/authorize?response_type=token&client_id=04d700d432884c4381c926e166bc5be8`
 2. Authorize and copy the `access_token` from URL
 3. Add to `.env`: `YANDEX_DISK_TOKEN=y0_AgAA...`
+
+**Option 3: Using Client Credentials (if you have a registered app)**
+1. Register your app at https://oauth.yandex.ru/
+2. Add to `.env`:
+   ```
+   YANDEX_CLIENT_ID=your_client_id
+   YANDEX_CLIENT_SECRET=your_client_secret
+   ```
+3. Token will be auto-generated when needed (during recording)
 
 ## Usage
 
@@ -89,16 +111,30 @@ php days/day4/cli.php --case=1
 
 ### Full Orchestration (Record + Upload)
 
+**Get Yandex.Disk token first:**
+```bash
+make get-token
+```
+
+**Then record and upload:**
 ```bash
 php tools/record.php --day=1
 ```
 
+Or using make:
+```bash
+make record-day1
+make record-day2
+make record-day3
+make record-day4
+```
+
 This will:
-1. Start screen recording via ffmpeg
+1. Start screen recording via ffmpeg (1200x700 top-left corner for 20 seconds)
 2. Run all demo cases for the selected day
-3. Stop recording and compress the video
-4. Upload to Yandex.Disk
-5. Generate and output public links
+3. Stop recording
+4. Upload to Yandex.Disk (if token is set)
+5. Generate and output public share links
 
 ## Day Descriptions
 
