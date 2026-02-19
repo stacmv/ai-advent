@@ -2,16 +2,16 @@
 
 help:
 	@echo ""
-	@echo "🌟 AI ADVENT - DAY 1: BASIC API CALL"
+	@echo "*** AI ADVENT - DAY 1: BASIC API CALL ***"
 	@echo "=========================================="
 	@echo ""
-	@echo "📋 What this day demonstrates:"
-	@echo "   Compare basic LLM responses across multiple providers"
-	@echo "   - How to call Claude, Deepseek, and YandexGPT APIs"
-	@echo "   - Response times across different providers"
-	@echo "   - Basic prompt handling and response parsing"
+	@echo "[*] What this day demonstrates:"
+	@echo "    Compare basic LLM responses across multiple providers"
+	@echo "    - How to call Claude, Deepseek, and YandexGPT APIs"
+	@echo "    - Response times across different providers"
+	@echo "    - Basic prompt handling and response parsing"
 	@echo ""
-	@echo "🚀 Available commands:"
+	@echo "[*] Available commands:"
 	@echo ""
 	@echo "  Setup:"
 	@echo "    make install          Install composer dependencies"
@@ -37,10 +37,10 @@ install:
 setup:
 	@if [ ! -f .env ]; then \
 		cp .env.example .env; \
-		echo "✓ Created .env from .env.example"; \
-		echo "⚠️  Please fill in your API keys in .env"; \
+		echo "[+] Created .env from .env.example"; \
+		echo "[!] Please fill in your API keys in .env"; \
 	else \
-		echo "✓ .env already exists"; \
+		echo "[+] .env already exists"; \
 	fi
 
 lint:
@@ -60,4 +60,4 @@ record:
 
 clean:
 	rm -rf recordings/
-	@echo "✓ Cleaned recordings directory"
+	@echo "[+] Cleaned recordings directory"
