@@ -108,7 +108,8 @@ function useImplicitFlow($clientId) {
     echo "[*] Step 1: Visit this authorization URL:\n";
     $authUrl = 'https://oauth.yandex.ru/authorize?' . http_build_query([
         'response_type' => 'token',
-        'client_id' => $clientId
+        'client_id' => $clientId,
+        'scope' => 'disk'
     ]);
 
     echo "    {$authUrl}\n\n";
@@ -124,14 +125,7 @@ function useImplicitFlow($clientId) {
     // Test the token
     echo "\n[*] Testing token...\n";
     try {
-        // Configure Guzzle with CA certificate for SSL verification
-        $clientConfig = [];
-        $certPath = __DIR__ . '/../cacert.pem';
-        if (file_exists($certPath)) {
-            $clientConfig['verify'] = $certPath;
-        }
-
-        $client = new \GuzzleHttp\Client($clientConfig);
+        $client = new \GuzzleHttp\Client();
         $testResponse = $client->get('https://cloud-api.yandex.net/v1/disk', [
             'headers' => ['Authorization' => 'OAuth ' . $token],
             'http_errors' => false
