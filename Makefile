@@ -8,8 +8,8 @@ help:
 	@echo "[*] What this day demonstrates:"
 	@echo "    Understand how temperature affects model behavior"
 	@echo "    - Temperature 0.0: Deterministic, consistent outputs"
-	@echo "    - Temperature 0.7: Balanced creativity and consistency"
-	@echo "    - Temperature 1.2: Highly creative and diverse outputs"
+	@echo "    - Temperature 0.5: Balanced creativity and consistency"
+	@echo "    - Temperature 1.0: Highly creative and diverse outputs"
 	@echo "    - Comparison across all 3 APIs in 3x3 table"
 	@echo ""
 	@echo "[*] Available commands:"
@@ -38,32 +38,17 @@ install:
 	composer install
 
 setup:
-get-token:
-	php tools/get_yandex_token.php
 	@if [ ! -f .env ]; then \
-get-token:
-	php tools/get_yandex_token.php
 		cp .env.example .env; \
-get-token:
-	php tools/get_yandex_token.php
 		echo "[+] Created .env from .env.example"; \
-get-token:
-	php tools/get_yandex_token.php
 		echo "[!] Please fill in your API keys in .env"; \
-get-token:
-	php tools/get_yandex_token.php
 	else \
-get-token:
-	php tools/get_yandex_token.php
 		echo "[+] .env already exists"; \
-get-token:
-	php tools/get_yandex_token.php
 	fi
-get-token:
-	php tools/get_yandex_token.php
 
 get-token:
 	php tools/get_yandex_token.php
+
 lint:
 	composer run lint
 
