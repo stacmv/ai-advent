@@ -8,6 +8,16 @@ use Symfony\Component\Process\Process;
 $dotenv = Dotenv::createImmutable(__DIR__ . '/../');
 $dotenv->load();
 
+// DEBUG: Check what was loaded
+$hasYandexFolder = isset($_ENV['YANDEX_FOLDER_ID']) && !empty($_ENV['YANDEX_FOLDER_ID']);
+$hasYandexKey = isset($_ENV['YANDEX_API_KEY']) && !empty($_ENV['YANDEX_API_KEY']);
+
+if (!$hasYandexFolder || !$hasYandexKey) {
+    error_log("WARNING: Missing env vars - FOLDER_ID exists: $hasYandexFolder, API_KEY exists: $hasYandexKey");
+    error_log("YANDEX_FOLDER_ID = " . ($_ENV['YANDEX_FOLDER_ID'] ?? 'NOT SET'));
+    error_log("YANDEX_API_KEY = " . (isset($_ENV['YANDEX_API_KEY']) ? 'SET' : 'NOT SET'));
+}
+
 // Ensure environment variables are available to subprocess using putenv()
 // This makes them available to all child processes
 foreach ($_ENV as $key => $value) {
@@ -144,22 +154,18 @@ foreach ($demoCases as $idx => $case) {
 
     // Run the CLI script
     // Pass all environment variables explicitly to the subprocess
-    // Build env array: start with $_ENV (has our loaded vars), add $_SERVER
+    // Build env array: combine $_ENV and $_SERVER
     $env = $_ENV + $_SERVER;
 
-    // Explicitly ensure API keys are in env
-    if (!empty($_ENV['YANDEX_API_KEY'])) {
-        $env['YANDEX_API_KEY'] = $_ENV['YANDEX_API_KEY'];
-    }
-    if (!empty($_ENV['YANDEX_FOLDER_ID'])) {
-        $env['YANDEX_FOLDER_ID'] = $_ENV['YANDEX_FOLDER_ID'];
-    }
-    if (!empty($_ENV['ANTHROPIC_API_KEY'])) {
-        $env['ANTHROPIC_API_KEY'] = $_ENV['ANTHROPIC_API_KEY'];
-    }
-    if (!empty($_ENV['DEEPSEEK_API_KEY'])) {
-        $env['DEEPSEEK_API_KEY'] = $_ENV['DEEPSEEK_API_KEY'];
-    }
+    // Force-set critical variables (use getenv which should have putenv() values)
+    $env['YANDEX_API_KEY'] = getenv('YANDEX_API_KEY') ?: ($_ENV['YANDEX_API_KEY'] ?? '');
+    $env['YANDEX_FOLDER_ID'] = getenv('YANDEX_FOLDER_ID') ?: ($_ENV['YANDEX_FOLDER_ID'] ?? '');
+    $env['ANTHROPIC_API_KEY'] = getenv('ANTHROPIC_API_KEY') ?: ($_ENV['ANTHROPIC_API_KEY'] ?? '');
+    $env['DEEPSEEK_API_KEY'] = getenv('DEEPSEEK_API_KEY') ?: ($_ENV['DEEPSEEK_API_KEY'] ?? '');
+
+    // DEBUG: Log what we're sending
+    error_log("Subprocess env - FOLDER_ID: " . substr($env['YANDEX_FOLDER_ID'] ?? 'EMPTY', 0, 10));
+    error_log("Subprocess env - API_KEY: " . (isset($env['YANDEX_API_KEY']) && $env['YANDEX_API_KEY'] ? 'SET' : 'EMPTY'));
 
     $process = new Process(['php', $cliFile, "--case={$caseNum}"]);
     $process->setTimeout(120);
