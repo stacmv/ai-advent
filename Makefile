@@ -2,17 +2,17 @@
 
 help:
 	@echo ""
-	@echo "🌟 AI ADVENT - DAY 2: RESPONSE FORMAT CONTROL"
+	@echo "*** AI ADVENT - DAY 2: RESPONSE FORMAT CONTROL ***"
 	@echo "=========================================="
 	@echo ""
-	@echo "📋 What this day demonstrates:"
-	@echo "   Control and constrain LLM output format and size"
-	@echo "   - Unconstrained vs constrained responses"
-	@echo "   - System prompts for format enforcement (JSON)"
-	@echo "   - Token limits and stop sequences"
-	@echo "   - How different providers handle constraints"
+	@echo "[*] What this day demonstrates:"
+	@echo "    Control and constrain LLM output format and size"
+	@echo "    - Unconstrained vs constrained responses"
+	@echo "    - System prompts for format enforcement (JSON)"
+	@echo "    - Token limits and stop sequences"
+	@echo "    - How different providers handle constraints"
 	@echo ""
-	@echo "🚀 Available commands:"
+	@echo "[*] Available commands:"
 	@echo ""
 	@echo "  Setup:"
 	@echo "    make install          Install composer dependencies"
@@ -38,10 +38,10 @@ install:
 setup:
 	@if [ ! -f .env ]; then \
 		cp .env.example .env; \
-		echo "✓ Created .env from .env.example"; \
-		echo "⚠️  Please fill in your API keys in .env"; \
+		echo "[+] Created .env from .env.example"; \
+		echo "[!] Please fill in your API keys in .env"; \
 	else \
-		echo "✓ .env already exists"; \
+		echo "[+] .env already exists"; \
 	fi
 
 lint:
@@ -61,4 +61,4 @@ record:
 
 clean:
 	rm -rf recordings/
-	@echo "✓ Cleaned recordings directory"
+	@echo "[+] Cleaned recordings directory"
