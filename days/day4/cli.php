@@ -27,9 +27,9 @@ echo "Prompt: $prompt\n";
 echo str_repeat("=", 100) . "\n\n";
 
 $apis = [
-    'claude' => $_ENV['ANTHROPIC_API_KEY'] ?? '',
-    'deepseek' => $_ENV['DEEPSEEK_API_KEY'] ?? '',
-    'yandexgpt' => $_ENV['YANDEX_API_KEY'] ?? ''
+    'claude' => getenv('ANTHROPIC_API_KEY') ?: ($_ENV['ANTHROPIC_API_KEY'] ?? ''),
+    'deepseek' => getenv('DEEPSEEK_API_KEY') ?: ($_ENV['DEEPSEEK_API_KEY'] ?? ''),
+    'yandexgpt' => getenv('YANDEX_API_KEY') ?: ($_ENV['YANDEX_API_KEY'] ?? '')
 ];
 
 $temperatures = [0, 0.7, 1.2];
