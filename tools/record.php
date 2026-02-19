@@ -141,10 +141,11 @@ foreach ($demoCases as $idx => $case) {
     echo "\n[Case {$caseNum}] {$case['name']}\n";
     echo str_repeat("-", 60) . "\n";
 
-    // Run the CLI script with inherited environment variables
+    // Run the CLI script - pass environment variables from .env
     $process = new Process(['php', $cliFile, "--case={$caseNum}"]);
     $process->setTimeout(120);
-    $process->inheritEnvironmentVariables(true);  // Inherit parent process env (includes $_ENV)
+    // Merge current environment with loaded .env variables
+    $process->setEnv(array_merge($_ENV, $_SERVER));
     $process->run();
 
     echo $process->getOutput();
