@@ -46,13 +46,14 @@ echo "=== Day 3: Reasoning Approaches ===\n";
 echo "Puzzle: {$prompt}\n";
 echo str_repeat("=", 80) . "\n\n";
 
-$apiKey = $env['ANTHROPIC_API_KEY'] ?? '';
-if (!$apiKey) {
-    echo "Error: ANTHROPIC_API_KEY not set\n";
+$apiKey = $env['YANDEX_API_KEY'] ?? '';
+$folderId = $env['YANDEX_FOLDER_ID'] ?? '';
+if (!$apiKey || !$folderId) {
+    echo "Error: YANDEX_API_KEY or YANDEX_FOLDER_ID not set\n";
     exit(1);
 }
 
-$client = new LLMClient('claude', $apiKey);
+$client = new LLMClient('yandexgpt', $apiKey, $folderId);
 
 // Approach 1: Direct answer
 echo "1. DIRECT ANSWER (no instructions)\n";
