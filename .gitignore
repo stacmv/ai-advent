@@ -1,0 +1,10 @@
+.env
+vendor/
+composer.lock
+recordings/
+.DS_Store
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
