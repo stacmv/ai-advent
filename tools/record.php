@@ -206,33 +206,21 @@ echo "   Video ready: $recordingFile\n";
 echo "   Size: " . filesize($recordingFile) . " bytes\n";
 echo "   (No additional compression needed - already H.264 encoded)\n\n";
 
-echo "6. Uploading to Yandex.Disk...\n";
-
-$yandexToken = $_ENV['YANDEX_DISK_TOKEN'] ?? '';
-if (!$yandexToken) {
-    echo "Warning: YANDEX_DISK_TOKEN not set, skipping upload\n";
-    echo "\nGenerated files:\n";
-    echo "   Recording: $recordingFile\n";
-    if ($finalFile !== $recordingFile) {
-        echo "   Compressed: $compressedFile\n";
-    }
-    exit(0);
-}
-
-$uploader = require __DIR__ . '/upload_yandex.php';
-$uploadResult = $uploader($finalFile, "day{$day}_{$timestamp}.mp4", $yandexToken);
-
-echo "7. Results\n";
+echo "6. Recording Complete\n";
 echo str_repeat("=", 60) . "\n";
 
-$repoUrl = $_ENV['GITHUB_REPO_URL'] ?? 'https://github.com/stacmv/ai-advent';
+$repoUrl = $env['GITHUB_REPO_URL'] ?? 'https://github.com/stacmv/ai-advent';
 
-echo "Code: {$repoUrl}/tree/day{$day}\n";
+echo "\n[+] Video saved: {$recordingFile}\n";
+echo "[+] Size: " . filesize($recordingFile) . " bytes\n";
+echo "[+] Duration: ~20 seconds\n";
 
-if (isset($uploadResult['shareLink'])) {
-    echo "Video: {$uploadResult['shareLink']}\n";
-} else {
-    echo "Video: [Upload failed]\n";
-}
+echo "\nNext steps:\n";
+echo "1. Review the video: {$recordingFile}\n";
+echo "2. Upload when ready:\n";
+echo "   php tools/upload_video.php day{$day}_{$timestamp}.mp4\n";
+echo "\nOr upload all recordings:\n";
+echo "   php tools/upload_video.php\n";
 
+echo "\nCode: {$repoUrl}/tree/day{$day}\n";
 echo "\nDone!\n";
