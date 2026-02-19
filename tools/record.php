@@ -8,10 +8,11 @@ use Symfony\Component\Process\Process;
 $dotenv = Dotenv::createImmutable(__DIR__ . '/../');
 $dotenv->load();
 
-// Ensure environment variables are available to subprocess
+// Ensure environment variables are available to subprocess using putenv()
+// This makes them available to all child processes
 foreach ($_ENV as $key => $value) {
-    if (!isset($_SERVER[$key])) {
-        $_SERVER[$key] = $value;
+    if ($value !== '') {  // Only set non-empty values
+        putenv("{$key}={$value}");
     }
 }
 
@@ -141,11 +142,10 @@ foreach ($demoCases as $idx => $case) {
     echo "\n[Case {$caseNum}] {$case['name']}\n";
     echo str_repeat("-", 60) . "\n";
 
-    // Run the CLI script - pass environment variables from .env
+    // Run the CLI script
+    // Environment variables are already available via putenv() above
     $process = new Process(['php', $cliFile, "--case={$caseNum}"]);
     $process->setTimeout(120);
-    // Merge current environment with loaded .env variables
-    $process->setEnv(array_merge($_ENV, $_SERVER));
     $process->run();
 
     echo $process->getOutput();
