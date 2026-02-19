@@ -95,7 +95,8 @@ echo "Size: " . formatBytes(filesize($filePath)) . "\n\n";
 $yandexToken = $env['YANDEX_DISK_TOKEN'] ?? '';
 
 // Try to auto-generate token if missing but client credentials exist
-if (!$yandexToken && !empty($env['YANDEX_CLIENT_ID']) && !empty($env['YANDEX_CLIENT_SECRET'])) {
+$clientId = $env['YANDEX_DISK_CLIENT_ID'] ?? ($env['YANDEX_CLIENT_ID'] ?? '');
+if (!$yandexToken && !empty($clientId)) {
     echo "[*] Token missing, attempting to generate with credentials...\n";
     $tokenProcess = new Process(['php', __DIR__ . '/get_yandex_token.php']);
     $tokenProcess->setTimeout(120);
