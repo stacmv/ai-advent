@@ -17,7 +17,15 @@ class LLMClient
         $this->provider = $provider;
         $this->apiKey = $apiKey;
         $this->folderId = $folderId;
-        $this->httpClient = new Client();
+
+        // Configure Guzzle with CA certificate for SSL verification
+        $clientConfig = [];
+        $certPath = __DIR__ . '/../cacert.pem';
+        if (file_exists($certPath)) {
+            $clientConfig['verify'] = $certPath;
+        }
+
+        $this->httpClient = new Client($clientConfig);
     }
 
     /**
