@@ -2,18 +2,46 @@
 
 require __DIR__ . '/../vendor/autoload.php';
 
-use Dotenv\Dotenv;
 use Symfony\Component\Process\Process;
 
-$dotenv = Dotenv::createImmutable(__DIR__ . '/../');
-$dotenv->load();
-
-// Ensure environment variables are available to subprocess using putenv()
-// This makes them available to all child processes
-foreach ($_ENV as $key => $value) {
-    if ($value !== '') {  // Only set non-empty values
-        putenv("{$key}={$value}");
+// Load .env directly - simple parser
+function loadEnv($filePath) {
+    $config = [];
+    if (!file_exists($filePath)) {
+        return $config;
     }
+
+    $lines = file($filePath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    foreach ($lines as $line) {
+        // Skip comments
+        if (strpos(trim($line), '#') === 0) {
+            continue;
+        }
+
+        // Parse KEY=VALUE
+        if (strpos($line, '=') !== false) {
+            list($key, $value) = explode('=', $line, 2);
+            $key = trim($key);
+            $value = trim($value);
+
+            // Remove quotes if present
+            if ((substr($value, 0, 1) === '"' && substr($value, -1) === '"') ||
+                (substr($value, 0, 1) === "'" && substr($value, -1) === "'")) {
+                $value = substr($value, 1, -1);
+            }
+
+            $config[$key] = $value;
+        }
+    }
+
+    return $config;
+}
+
+// Load environment from .env file
+$env = loadEnv(__DIR__ . '/../.env');
+if (empty($env['YANDEX_API_KEY']) || empty($env['YANDEX_FOLDER_ID'])) {
+    // Try to load from .env.example if .env doesn't exist
+    $env = array_merge(loadEnv(__DIR__ . '/../.env.example'), $env);
 }
 
 // Parse arguments
@@ -131,28 +159,10 @@ foreach ($demoCases as $idx => $case) {
     echo "\n[Case {$caseNum}] {$case['name']}\n";
     echo str_repeat("-", 60) . "\n";
 
-    // Run the CLI script
-    // Pass all environment variables explicitly to the subprocess
-    // Build env array: start with $_ENV (has our loaded vars), add $_SERVER
-    $env = $_ENV + $_SERVER;
-
-    // Explicitly ensure API keys are in env
-    if (!empty($_ENV['YANDEX_API_KEY'])) {
-        $env['YANDEX_API_KEY'] = $_ENV['YANDEX_API_KEY'];
-    }
-    if (!empty($_ENV['YANDEX_FOLDER_ID'])) {
-        $env['YANDEX_FOLDER_ID'] = $_ENV['YANDEX_FOLDER_ID'];
-    }
-    if (!empty($_ENV['ANTHROPIC_API_KEY'])) {
-        $env['ANTHROPIC_API_KEY'] = $_ENV['ANTHROPIC_API_KEY'];
-    }
-    if (!empty($_ENV['DEEPSEEK_API_KEY'])) {
-        $env['DEEPSEEK_API_KEY'] = $_ENV['DEEPSEEK_API_KEY'];
-    }
-
+    // Run the CLI script with loaded environment variables
     $process = new Process(['php', $cliFile, "--case={$caseNum}"]);
     $process->setTimeout(120);
-    $process->setEnv($env);
+    $process->setEnv($env);  // Pass the directly-loaded $env from .env file
     $process->run();
 
     echo $process->getOutput();
