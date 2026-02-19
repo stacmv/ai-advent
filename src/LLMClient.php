@@ -117,8 +117,9 @@ class LLMClient
         $temperature = $options['temperature'] ?? 1.0;
         $maxTokens = $options['max_tokens'] ?? 1024;
 
+        // Yandex model URI format: gpt://folder_id/model_name/version
         $body = [
-            'modelUri' => "gpt://{$this->folderId}/yandexgpt-lite/latest",
+            'modelUri' => "gpt://{$this->folderId}/yandexgpt/latest",
             'completionOptions' => [
                 'stream' => false,
                 'temperature' => $temperature,
