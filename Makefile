@@ -26,6 +26,7 @@ help:
 	@echo ""
 	@echo "  Recording & Upload:"
 	@echo "    make record           Start screen recording and run demo"
+	@echo "    make upload           Upload latest video for this day"
 	@echo ""
 	@echo "  Utilities:"
 	@echo "    make clean            Remove recordings directory"
@@ -57,6 +58,10 @@ demo:
 record:
 	@echo "Starting screen recording for Day 1 demo..."
 	php tools/record.php --day=1
+
+upload:
+	@echo "Uploading latest Day 1 video..."
+	php tools/upload_latest.php 1
 
 clean:
 	rm -rf recordings/
