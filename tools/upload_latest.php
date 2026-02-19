@@ -125,13 +125,15 @@ if (isset($uploadResult['error'])) {
 
 echo "\n[+] Upload successful!\n";
 
-if (isset($uploadResult['shareLink'])) {
-    echo "[+] Public link: " . $uploadResult['shareLink'] . "\n";
-} elseif (isset($uploadResult['path'])) {
-    echo "[+] Uploaded to: " . $uploadResult['path'] . "\n";
-}
+// Build submission message
+$githubRepo = $env['GITHUB_REPO_URL'] ?? 'https://github.com/stacmv/ai-advent';
+$codeLink = rtrim($githubRepo, '/') . "/tree/day{$day}";
+$videoLink = $uploadResult['shareLink'] ?? $uploadResult['path'] ?? '(not available)';
 
-echo "[+] Done!\n";
+echo "\n========================================\n";
+echo "Код: {$codeLink}\n";
+echo "Видео: {$videoLink}\n";
+echo "========================================\n";
 
 function formatBytes($bytes) {
     $units = ['B', 'KB', 'MB', 'GB'];
