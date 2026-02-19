@@ -198,7 +198,27 @@ echo "   (No additional compression needed - already H.264 encoded)\n\n";
 
 echo "6. Uploading to Yandex.Disk...\n";
 
-$yandexToken = $_ENV['YANDEX_DISK_TOKEN'] ?? '';
+$yandexToken = $env['YANDEX_DISK_TOKEN'] ?? '';
+
+// Try to auto-generate token if missing but client credentials exist
+if (!$yandexToken && !empty($env['YANDEX_CLIENT_ID']) && !empty($env['YANDEX_CLIENT_SECRET'])) {
+    echo "   [*] Token missing but client credentials found, attempting to generate...\n";
+    $tokenProcess = new Process(['php', __DIR__ . '/get_yandex_token.php']);
+    $tokenProcess->setTimeout(120);
+    $tokenProcess->setEnv($env);
+    $tokenProcess->run();
+
+    if ($tokenProcess->isSuccessful()) {
+        // Reload .env to get the new token
+        $env = loadEnv(__DIR__ . '/../.env');
+        $yandexToken = $env['YANDEX_DISK_TOKEN'] ?? '';
+        echo "   [+] Token generated successfully\n";
+    } else {
+        echo "   [-] Token generation failed\n";
+        echo $tokenProcess->getErrorOutput();
+    }
+}
+
 if (!$yandexToken) {
     echo "Warning: YANDEX_DISK_TOKEN not set, skipping upload\n";
     echo "\nGenerated files:\n";
