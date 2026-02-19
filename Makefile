@@ -1,4 +1,4 @@
-.PHONY: help install lint test demo record upload clean setup get-token
+.PHONY: help install lint test demo record upload clean setup get-token next-day
 
 help:
 	@echo ""
@@ -29,6 +29,9 @@ help:
 	@echo "  Recording & Upload:"
 	@echo "    make record           Start screen recording and run demo
 	@echo "    make upload           Upload latest video for this day""
+	@echo ""
+	@echo "  Bootstrap:"
+	@echo "    make next-day N=5     Bootstrap next day branch"
 	@echo ""
 	@echo "  Utilities:"
 	@echo "    make clean            Remove recordings directory"
@@ -82,6 +85,10 @@ record:
 upload:
 	@echo "Uploading latest Day 3 video..."
 	php tools/upload_latest.php 3
+
+next-day:
+	@if [ -z "$(N)" ]; then echo "Usage: make next-day N=<day_number> [T=\"Title\"]"; exit 1; fi
+	php tools/bootstrap_day.php $(N) "$(T)"
 
 clean:
 	rm -rf recordings/
