@@ -141,6 +141,6 @@ class LLMClient
         ]);
 
         $data = json_decode($response->getBody(), true);
-        return $data['result']['message']['text'] ?? 'No response';
+        return $data['result']['alternatives'][0]['message']['text'] ?? 'No response';
     }
 }
