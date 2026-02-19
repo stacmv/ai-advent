@@ -1,4 +1,4 @@
-.PHONY: help install lint lint-fix setup get-token clean
+.PHONY: help install lint lint-fix setup get-token next-day clean
 
 help:
 	@echo "AI Advent Challenge - Main Branch"
@@ -12,6 +12,9 @@ help:
 	@echo "Code Quality:"
 	@echo "  make lint             Check code style (PSR-12)"
 	@echo "  make lint-fix         Auto-fix code style issues"
+	@echo ""
+	@echo "Bootstrap:"
+	@echo "  make next-day N=5     Bootstrap next day branch"
 	@echo ""
 	@echo "Utilities:"
 	@echo "  make clean            Remove recordings directory"
@@ -43,6 +46,10 @@ lint:
 
 lint-fix:
 	composer run lint-fix
+
+next-day:
+	@if [ -z "$(N)" ]; then echo "Usage: make next-day N=<day_number> [T=\"Title\"]"; exit 1; fi
+	php tools/bootstrap_day.php $(N) "$(T)"
 
 clean:
 	rm -rf recordings/
