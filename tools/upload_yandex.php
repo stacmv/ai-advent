@@ -1,13 +1,14 @@
 <?php
 
-use GuzzleHttp\Client;
-
 /**
  * Upload file to Yandex.Disk and return share link
  *
  * Returns closure that can be called with: uploadFile(filePath, fileName, token)
  */
-return function(string $filePath, string $fileName, string $token): array {
+
+use GuzzleHttp\Client;
+
+return function (string $filePath, string $fileName, string $token): array {
     if (!file_exists($filePath)) {
         return ['error' => 'File not found: ' . $filePath];
     }
