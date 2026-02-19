@@ -143,9 +143,13 @@ foreach ($demoCases as $idx => $case) {
     echo str_repeat("-", 60) . "\n";
 
     // Run the CLI script
-    // Environment variables are already available via putenv() above
+    // Pass all environment variables explicitly to the subprocess
+    // Merge $_ENV with $_SERVER to catch all loaded variables
+    $env = array_replace_recursive($_SERVER, $_ENV);
+
     $process = new Process(['php', $cliFile, "--case={$caseNum}"]);
     $process->setTimeout(120);
+    $process->setEnv($env);
     $process->run();
 
     echo $process->getOutput();
