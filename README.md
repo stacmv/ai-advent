@@ -56,9 +56,16 @@ cp .env.example .env
    - `YANDEX_FOLDER_ID=b1g...`
 
 #### Yandex.Disk (for video upload)
-1. Visit: `https://oauth.yandex.ru/authorize?response_type=token&client_id=04d700d432884c4381c926e166bc5be8`
-2. Authorize and copy the `access_token` from URL
-3. Add to `.env`: `YANDEX_DISK_TOKEN=y0_AgAA...`
+1. Create Yandex.Disk OAuth app at https://console.yandex.cloud/
+   - Navigate to **App registrations** → **Create application**
+   - Copy the **Client ID** and **Client Secret** from your app
+   - Add to `.env`:
+     ```
+     YANDEX_DISK_CLIENT_ID=your_client_id
+     YANDEX_DISK_CLIENT_SECRET=your_client_secret
+     ```
+2. Run `make get-token` to obtain and save the access token
+3. The token will be saved as `YANDEX_DISK_TOKEN` in your `.env`
 
 ## Usage
 
