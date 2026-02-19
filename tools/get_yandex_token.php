@@ -108,8 +108,7 @@ function useImplicitFlow($clientId) {
     echo "[*] Step 1: Visit this authorization URL:\n";
     $authUrl = 'https://oauth.yandex.ru/authorize?' . http_build_query([
         'response_type' => 'token',
-        'client_id' => $clientId,
-        'scope' => 'disk'
+        'client_id' => $clientId
     ]);
 
     echo "    {$authUrl}\n\n";
