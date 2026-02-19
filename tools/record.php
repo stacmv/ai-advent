@@ -70,26 +70,15 @@ $recordingFile = __DIR__ . "/../recordings/day{$day}_{$timestamp}.mp4";
 $compressedFile = __DIR__ . "/../recordings/day{$day}_{$timestamp}_compressed.mp4";
 
 // Step 0: Prepare recording area
-echo "0. PREPARE FOR RECORDING\n";
-echo "   ========================================\n";
-echo "\n   [!] IMPORTANT: Read this carefully\n\n";
-echo "   Recording will capture ONLY this area:\n";
-echo "   - Location: Top-left corner of your screen\n";
-echo "   - Size: 1200 x 700 pixels\n";
-echo "   - Duration: 20 seconds (auto-stop)\n\n";
-echo "   WHAT YOU NEED TO DO:\n";
-echo "   1. Move your terminal window to TOP-LEFT corner\n";
-echo "   2. Resize terminal if needed (should fit in 1200x700 area)\n";
-echo "   3. Make sure terminal is ACTIVE/FOCUSED\n";
-echo "   4. Clear any overlapping windows\n\n";
-echo "   [*] When ready, press ENTER to START recording:\n";
-echo "   ";
+echo "[*] Recording will capture top-left 1200x700 area for 20 seconds\n";
+echo "[*] Move terminal to TOP-LEFT corner and make sure it's FOCUSED\n";
+echo "[*] When ready, press ENTER to start:\n";
+echo "    ";
 
 // Wait for user confirmation
 fgets(STDIN);
 
-echo "\n   [+] Recording will start in 3 seconds...\n";
-echo "   [+] REMEMBER: Only the top-left 1200x700 area will be recorded!\n\n";
+echo "\n[+] Starting in 3 seconds...\n";
 sleep(3);
 
 echo "1. Starting screen capture...\n";
