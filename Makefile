@@ -1,4 +1,4 @@
-.PHONY: help install lint test demo record upload clean setup
+.PHONY: help install lint test demo record upload clean setup get-token
 
 help:
 	@echo ""
@@ -17,6 +17,7 @@ help:
 	@echo "  Setup:"
 	@echo "    make install          Install composer dependencies"
 	@echo "    make setup            Copy .env.example to .env"
+	@echo "    make get-token        Get Yandex.Disk OAuth token"
 	@echo ""
 	@echo "  Code Quality:"
 	@echo "    make lint             Check code style (PSR-12)"
@@ -37,14 +38,32 @@ install:
 	composer install
 
 setup:
+get-token:
+	php tools/get_yandex_token.php
 	@if [ ! -f .env ]; then \
+get-token:
+	php tools/get_yandex_token.php
 		cp .env.example .env; \
+get-token:
+	php tools/get_yandex_token.php
 		echo "[+] Created .env from .env.example"; \
+get-token:
+	php tools/get_yandex_token.php
 		echo "[!] Please fill in your API keys in .env"; \
+get-token:
+	php tools/get_yandex_token.php
 	else \
+get-token:
+	php tools/get_yandex_token.php
 		echo "[+] .env already exists"; \
+get-token:
+	php tools/get_yandex_token.php
 	fi
+get-token:
+	php tools/get_yandex_token.php
 
+get-token:
+	php tools/get_yandex_token.php
 lint:
 	composer run lint
 
