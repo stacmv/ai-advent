@@ -8,6 +8,13 @@ use Symfony\Component\Process\Process;
 $dotenv = Dotenv::createImmutable(__DIR__ . '/../');
 $dotenv->load();
 
+// Ensure environment variables are available to subprocess
+foreach ($_ENV as $key => $value) {
+    if (!isset($_SERVER[$key])) {
+        $_SERVER[$key] = $value;
+    }
+}
+
 // Parse arguments
 $day = null;
 foreach ($argv as $arg) {
@@ -133,9 +140,10 @@ foreach ($demoCases as $idx => $case) {
     echo "\n[Case {$caseNum}] {$case['name']}\n";
     echo str_repeat("-", 60) . "\n";
 
-    // Run the CLI script
+    // Run the CLI script with inherited environment variables
     $process = new Process(['php', $cliFile, "--case={$caseNum}"]);
     $process->setTimeout(120);
+    $process->inheritEnvironmentVariables(true);  // Inherit parent process env (includes $_ENV)
     $process->run();
 
     echo $process->getOutput();
