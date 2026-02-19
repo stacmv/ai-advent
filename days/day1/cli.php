@@ -56,7 +56,7 @@ foreach ($apis as $provider => $apiKey) {
             'time' => $elapsed
         ];
 
-        echo "Response (in {$elapsed:.2f}s):\n";
+        echo sprintf("Response (in %.2fs):\n", $elapsed);
         echo substr($response, 0, 300);
         if (strlen($response) > 300) {
             echo "\n... [truncated]";
