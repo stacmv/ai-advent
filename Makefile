@@ -1,4 +1,4 @@
-.PHONY: help install lint lint-fix test test-day1 test-day2 test-day3 test-day4 record record-day1 record-day2 record-day3 record-day4 clean setup usecase usecase-day1 usecase-day2 usecase-day3 usecase-day4
+.PHONY: help install lint lint-fix test test-day1 test-day2 test-day3 test-day4 record record-day1 record-day2 record-day3 record-day4 clean setup get-token usecase usecase-day1 usecase-day2 usecase-day3 usecase-day4
 
 help:
 	@echo "AI Advent Challenge - Available Commands"
@@ -6,6 +6,7 @@ help:
 	@echo "Setup:"
 	@echo "  make install          Install composer dependencies"
 	@echo "  make setup            Copy .env.example to .env"
+	@echo "  make get-token        Get Yandex.Disk OAuth token interactively"
 	@echo ""
 	@echo "Code Quality:"
 	@echo "  make lint             Check code style (PSR-12)"
@@ -44,6 +45,9 @@ setup:
 	else \
 		echo ".env already exists"; \
 	fi
+
+get-token:
+	php tools/get_yandex_token.php
 
 lint:
 	composer run lint
