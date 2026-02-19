@@ -52,7 +52,7 @@ $apis = [
     'yandexgpt' => $env['YANDEX_API_KEY'] ?? ''
 ];
 
-$temperatures = [0, 0.7, 1.2];
+$temperatures = [0, 0.5, 1.0];
 
 // Run all combinations
 $results = [];
