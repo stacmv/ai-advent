@@ -63,11 +63,14 @@ if ($isWindows) {
 }
 
 $recordProcess = new Process($ffmpegCmd);
-$recordProcess->setTimeout(120);
+$recordProcess->setTimeout(180);  // 3 minute timeout for full process
+$recordProcess->setIdleTimeout(120);  // Idle timeout of 2 minutes
 
 // Start recording in background
 $recordProcess->start();
-sleep(2);  // Give ffmpeg time to start
+sleep(2);  // Give ffmpeg time to start recording
+
+echo "   [Recording started - will auto-stop after 60 seconds]\n";
 
 echo "2. Loading demo cases...\n";
 
@@ -115,18 +118,16 @@ foreach ($demoCases as $idx => $case) {
 }
 
 echo "\n" . str_repeat("=", 60) . "\n";
-echo "4. Stopping screen capture...\n";
+echo "4. Waiting for screen capture to auto-stop...\n";
 
-// Signal ffmpeg to stop (try to write 'q' to stdin)
+// Wait for ffmpeg to finish (it will auto-stop after 60 seconds due to -t flag)
 try {
-    if (is_resource($recordProcess->getInput())) {
-        fwrite($recordProcess->getInput(), 'q');
-    }
+    $recordProcess->wait();
 } catch (Exception $e) {
-    // Ignore if stdin not writable
+    echo "Warning: " . $e->getMessage() . "\n";
+    // Forcefully terminate if it doesn't stop gracefully
+    $recordProcess->stop(5, SIGTERM);
 }
-
-$recordProcess->wait();
 
 if (!file_exists($recordingFile)) {
     echo "Error: Recording failed - file not created\n";
