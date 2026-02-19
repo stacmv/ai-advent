@@ -16,29 +16,36 @@ return function (string $filePath, string $fileName, string $token): array {
     $fileSize = filesize($filePath);
     $uploadDir = '/ai-advent';
 
+    // SSL certificate path for Windows
+    $certPath = __DIR__ . '/../cacert.pem';
+    $clientOptions = file_exists($certPath) ? ['verify' => $certPath] : [];
+
     echo "   Uploading to Yandex.Disk: {$fileName} ({$fileSize} bytes)\n";
 
     try {
-        $client = new Client();
+        $client = new Client($clientOptions);
 
         // Step 1: Create directory if not exists
         echo "   Creating directory...\n";
         $client->request('MKCOL', "https://webdav.yandex.ru{$uploadDir}", [
             'headers' => [
-                'Authorization' => 'Bearer ' . $token,
+                'Authorization' => 'OAuth ' . $token,
             ],
-            'http_errors' => false,  // Don't throw on 4xx/5xx
+            'http_errors' => false,
         ]);
 
         // Step 2: Upload file via WebDAV
         echo "   Uploading file...\n";
-        $filePath = fopen($filePath, 'r');
+        $fileHandle = fopen($filePath, 'r');
         $response = $client->put("https://webdav.yandex.ru{$uploadDir}/{$fileName}", [
             'headers' => [
-                'Authorization' => 'Bearer ' . $token,
+                'Authorization' => 'OAuth ' . $token,
             ],
-            'body' => $filePath,
+            'body' => $fileHandle,
         ]);
+        if (is_resource($fileHandle)) {
+            fclose($fileHandle);
+        }
 
         if ($response->getStatusCode() >= 400) {
             return ['error' => 'Upload failed: HTTP ' . $response->getStatusCode()];
@@ -46,11 +53,11 @@ return function (string $filePath, string $fileName, string $token): array {
 
         echo "   Upload successful!\n";
 
-        // Step 3: Get public share link
+        // Step 3: Publish the file (make it public)
         echo "   Generating public link...\n";
         $resourcePath = "{$uploadDir}/{$fileName}";
 
-        $publishResponse = $client->put(
+        $client->put(
             "https://cloud-api.yandex.net/v1/disk/resources/publish",
             [
                 'headers' => [
@@ -59,21 +66,34 @@ return function (string $filePath, string $fileName, string $token): array {
                 'query' => [
                     'path' => $resourcePath,
                 ],
+                'http_errors' => false,
             ]
         );
 
-        $publishData = json_decode($publishResponse->getBody(), true);
+        // Step 4: Get resource metadata to retrieve public_url
+        $metaResponse = $client->get(
+            "https://cloud-api.yandex.net/v1/disk/resources",
+            [
+                'headers' => [
+                    'Authorization' => 'OAuth ' . $token,
+                ],
+                'query' => [
+                    'path' => $resourcePath,
+                ],
+                'http_errors' => false,
+            ]
+        );
 
-        if (isset($publishData['public_url'])) {
-            $publicUrl = $publishData['public_url'];
+        $metaData = json_decode($metaResponse->getBody(), true);
+
+        if (!empty($metaData['public_url'])) {
+            $publicUrl = $metaData['public_url'];
             echo "   Public link: {$publicUrl}\n";
             return ['shareLink' => $publicUrl];
-        } else {
-            // If publish fails, try to construct share link directly
-            // Yandex.Disk public links follow pattern: https://disk.yandex.ru/d/SHAREID
-            echo "   Could not get public link via API, file uploaded to: {$resourcePath}\n";
-            return ['uploaded' => true, 'path' => $resourcePath];
         }
+
+        echo "   File uploaded to: {$resourcePath} (could not get public link)\n";
+        return ['uploaded' => true, 'path' => $resourcePath];
     } catch (Exception $e) {
         return ['error' => $e->getMessage()];
     }

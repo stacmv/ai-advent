@@ -5,7 +5,6 @@
     "require": {
         "php": "^8.0",
         "guzzlehttp/guzzle": "^7.5",
-        "vlucas/phpdotenv": "^5.4",
         "symfony/process": "^6.0"
     },
     "require-dev": {
