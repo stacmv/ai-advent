@@ -2,17 +2,17 @@
 
 help:
 	@echo ""
-	@echo "🌟 AI ADVENT - DAY 4: TEMPERATURE COMPARISON"
+	@echo "*** AI ADVENT - DAY 4: TEMPERATURE COMPARISON ***"
 	@echo "=========================================="
 	@echo ""
-	@echo "📋 What this day demonstrates:"
-	@echo "   Understand how temperature affects model behavior"
-	@echo "   - Temperature 0.0: Deterministic, consistent outputs"
-	@echo "   - Temperature 0.7: Balanced creativity and consistency"
-	@echo "   - Temperature 1.2: Highly creative and diverse outputs"
-	@echo "   - Comparison across all 3 APIs in 3×3 table"
+	@echo "[*] What this day demonstrates:"
+	@echo "    Understand how temperature affects model behavior"
+	@echo "    - Temperature 0.0: Deterministic, consistent outputs"
+	@echo "    - Temperature 0.7: Balanced creativity and consistency"
+	@echo "    - Temperature 1.2: Highly creative and diverse outputs"
+	@echo "    - Comparison across all 3 APIs in 3x3 table"
 	@echo ""
-	@echo "🚀 Available commands:"
+	@echo "[*] Available commands:"
 	@echo ""
 	@echo "  Setup:"
 	@echo "    make install          Install composer dependencies"
@@ -38,10 +38,10 @@ install:
 setup:
 	@if [ ! -f .env ]; then \
 		cp .env.example .env; \
-		echo "✓ Created .env from .env.example"; \
-		echo "⚠️  Please fill in your API keys in .env"; \
+		echo "[+] Created .env from .env.example"; \
+		echo "[!] Please fill in your API keys in .env"; \
 	else \
-		echo "✓ .env already exists"; \
+		echo "[+] .env already exists"; \
 	fi
 
 lint:
@@ -61,4 +61,4 @@ record:
 
 clean:
 	rm -rf recordings/
-	@echo "✓ Cleaned recordings directory"
+	@echo "[+] Cleaned recordings directory"
