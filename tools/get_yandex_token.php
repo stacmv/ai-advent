@@ -86,23 +86,40 @@ function useImplicitFlow($clientId) {
         exit(1);
     }
 
-    // Test the token
+    // Test the token via WebDAV (this is what uploads actually use)
     echo "\n[*] Testing token...\n";
     try {
         $certPath = __DIR__ . '/../cacert.pem';
         $clientOptions = file_exists($certPath) ? ['verify' => $certPath] : [];
         $client = new \GuzzleHttp\Client($clientOptions);
-        $testResponse = $client->get('https://cloud-api.yandex.net/v1/disk', [
-            'headers' => ['Authorization' => 'OAuth ' . $token],
-            'http_errors' => false
+
+        $testResponse = $client->request('PROPFIND', 'https://webdav.yandex.ru/', [
+            'headers' => [
+                'Authorization' => 'OAuth ' . $token,
+                'Depth' => '0',
+            ],
+            'http_errors' => false,
         ]);
 
-        if ($testResponse->getStatusCode() === 200) {
+        $code = $testResponse->getStatusCode();
+        // WebDAV PROPFIND returns 207 Multi-Status on success
+        if ($code === 207 || $code === 200) {
             echo "[+] Token is valid!\n";
             saveToken($token);
             exit(0);
         } else {
-            echo "[-] Token validation failed (HTTP " . $testResponse->getStatusCode() . ")\n";
+            echo "[-] Token validation failed (HTTP {$code})\n";
+            $body = (string) $testResponse->getBody();
+            if ($body) {
+                echo "[-] Response: {$body}\n";
+            }
+            if ($code === 401) {
+                echo "[!] Token is invalid or expired. Get a new one.\n";
+            } elseif ($code === 403) {
+                echo "[!] Your OAuth app needs Yandex.Disk access.\n";
+                echo "[!] Go to https://oauth.yandex.ru/ -> your app -> Permissions\n";
+                echo "[!] Enable: Yandex.Disk REST API (cloud_api:disk.app_folder or cloud_api:disk.read/write)\n";
+            }
             exit(1);
         }
 

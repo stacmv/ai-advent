@@ -53,11 +53,11 @@ return function (string $filePath, string $fileName, string $token): array {
 
         echo "   Upload successful!\n";
 
-        // Step 3: Publish the file (make it public)
+        // Step 3: Publish the file and get public link (via REST API)
         echo "   Generating public link...\n";
         $resourcePath = "{$uploadDir}/{$fileName}";
 
-        $client->put(
+        $publishResponse = $client->put(
             "https://cloud-api.yandex.net/v1/disk/resources/publish",
             [
                 'headers' => [
@@ -70,29 +70,34 @@ return function (string $filePath, string $fileName, string $token): array {
             ]
         );
 
-        // Step 4: Get resource metadata to retrieve public_url
-        $metaResponse = $client->get(
-            "https://cloud-api.yandex.net/v1/disk/resources",
-            [
-                'headers' => [
-                    'Authorization' => 'OAuth ' . $token,
-                ],
-                'query' => [
-                    'path' => $resourcePath,
-                ],
-                'http_errors' => false,
-            ]
-        );
+        if ($publishResponse->getStatusCode() < 300) {
+            // Get resource metadata to retrieve public_url
+            $metaResponse = $client->get(
+                "https://cloud-api.yandex.net/v1/disk/resources",
+                [
+                    'headers' => [
+                        'Authorization' => 'OAuth ' . $token,
+                    ],
+                    'query' => [
+                        'path' => $resourcePath,
+                    ],
+                    'http_errors' => false,
+                ]
+            );
 
-        $metaData = json_decode($metaResponse->getBody(), true);
+            $metaData = json_decode($metaResponse->getBody(), true);
 
-        if (!empty($metaData['public_url'])) {
-            $publicUrl = $metaData['public_url'];
-            echo "   Public link: {$publicUrl}\n";
-            return ['shareLink' => $publicUrl];
+            if (!empty($metaData['public_url'])) {
+                $publicUrl = $metaData['public_url'];
+                echo "   Public link: {$publicUrl}\n";
+                return ['shareLink' => $publicUrl];
+            }
         }
 
-        echo "   File uploaded to: {$resourcePath} (could not get public link)\n";
+        // REST API may return 403 if app lacks Disk REST API permissions
+        // File is still uploaded via WebDAV — user can share manually
+        echo "   File uploaded to: disk:{$resourcePath}\n";
+        echo "   (Share link unavailable — publish manually at https://disk.yandex.ru)\n";
         return ['uploaded' => true, 'path' => $resourcePath];
     } catch (Exception $e) {
         return ['error' => $e->getMessage()];
