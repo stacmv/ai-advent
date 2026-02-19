@@ -94,28 +94,50 @@ return function (string $filePath, string $fileName, string $token): array {
             ]
         );
 
-        if ($publishResponse->getStatusCode() < 300) {
-            // Step 5: Get resource metadata to retrieve public_url
-            $metaResponse = $client->get(
-                "https://cloud-api.yandex.net/v1/disk/resources",
-                [
-                    'headers' => $authHeader,
-                    'query' => ['path' => $diskPath],
-                    'http_errors' => false,
-                ]
-            );
+        $publishCode = $publishResponse->getStatusCode();
+        $publishData = json_decode($publishResponse->getBody(), true);
 
+        if ($publishCode >= 300) {
+            echo "   Publish failed (HTTP {$publishCode}): " . ($publishData['message'] ?? '') . "\n";
+            echo "   File uploaded to: disk:{$diskPath}\n";
+            echo "   Add cloud_api:disk.read permission to your OAuth app, then re-run.\n";
+            return ['uploaded' => true, 'path' => $diskPath];
+        }
+
+        // Publish returns a Link with href pointing to resource metadata
+        // Follow it to get public_url
+        $metaUrl = $publishData['href'] ?? null;
+        if ($metaUrl) {
+            $metaResponse = $client->get($metaUrl, [
+                'headers' => $authHeader,
+                'http_errors' => false,
+            ]);
             $metaData = json_decode($metaResponse->getBody(), true);
 
             if (!empty($metaData['public_url'])) {
-                $publicUrl = $metaData['public_url'];
-                echo "   Public link: {$publicUrl}\n";
-                return ['shareLink' => $publicUrl];
+                echo "   Public link: {$metaData['public_url']}\n";
+                return ['shareLink' => $metaData['public_url']];
             }
         }
 
-        echo "   File uploaded to: disk:{$diskPath}\n";
-        echo "   (Publish manually at https://disk.yandex.ru)\n";
+        // Fallback: query resource directly
+        $metaResponse = $client->get(
+            "https://cloud-api.yandex.net/v1/disk/resources",
+            [
+                'headers' => $authHeader,
+                'query' => ['path' => $diskPath],
+                'http_errors' => false,
+            ]
+        );
+        $metaData = json_decode($metaResponse->getBody(), true);
+
+        if (!empty($metaData['public_url'])) {
+            echo "   Public link: {$metaData['public_url']}\n";
+            return ['shareLink' => $metaData['public_url']];
+        }
+
+        echo "   File uploaded but could not get public link.\n";
+        echo "   Add cloud_api:disk.read to your OAuth app permissions.\n";
         return ['uploaded' => true, 'path' => $diskPath];
     } catch (Exception $e) {
         return ['error' => $e->getMessage()];
