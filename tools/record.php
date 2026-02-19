@@ -40,24 +40,34 @@ echo "   Output: $recordingFile\n";
 $isWindows = strtoupper(substr(PHP_OS, 0, 3)) === 'WIN';
 
 if ($isWindows) {
-    // Windows GDI screen grab with ffmpeg
+    // Windows GDI screen grab with ffmpeg - capture terminal window area (top-left 1200x700)
+    // This captures just the terminal instead of entire desktop
     $ffmpegCmd = [
         'ffmpeg',
         '-f', 'gdigrab',
         '-framerate', '30',
+        '-offset_x', '0',      // Start from left edge
+        '-offset_y', '0',      // Start from top
+        '-video_size', '1200x700',  // Capture only terminal area
         '-i', 'desktop',
         '-t', '60',  // Record for max 60 seconds
+        '-c:v', 'libx264',     // Use H.264 codec
+        '-preset', 'fast',     // Fast encoding
+        '-crf', '18',          // Quality (lower = better, 18-28 is good)
         $recordingFile
     ];
 } else {
-    // Fallback for other systems (would need adjustment)
+    // Linux/Mac: capture specific window area
     $ffmpegCmd = [
         'ffmpeg',
         '-f', 'x11grab',
         '-r', '30',
-        '-s', '1920x1080',
-        '-i', ':0',
+        '-s', '1200x700',
+        '-i', ':0+0,0',
         '-t', '60',
+        '-c:v', 'libx264',
+        '-preset', 'fast',
+        '-crf', '18',
         $recordingFile
     ];
 }
@@ -137,26 +147,13 @@ if (!file_exists($recordingFile)) {
 echo "   Recording saved: $recordingFile\n";
 echo "   Size: " . filesize($recordingFile) . " bytes\n\n";
 
-echo "5. Compressing video...\n";
-$compressProcess = new Process([
-    'ffmpeg',
-    '-i', $recordingFile,
-    '-vcodec', 'libx264',
-    '-crf', '28',
-    '-y',
-    $compressedFile
-]);
-$compressProcess->setTimeout(300);
-$compressProcess->run();
-
-if (!file_exists($compressedFile)) {
-    echo "Warning: Compression failed, using original file\n";
-    $finalFile = $recordingFile;
-} else {
-    $finalFile = $compressedFile;
-    echo "   Compressed: $compressedFile\n";
-    echo "   Size: " . filesize($compressedFile) . " bytes\n\n";
-}
+echo "5. Re-encoding video with better codec...\n";
+// Skip compression - already encoded during recording with good quality
+// This saves time and ensures video is playable
+$finalFile = $recordingFile;
+echo "   Video ready: $recordingFile\n";
+echo "   Size: " . filesize($recordingFile) . " bytes\n";
+echo "   (No additional compression needed - already H.264 encoded)\n\n";
 
 echo "6. Uploading to Yandex.Disk...\n";
 
