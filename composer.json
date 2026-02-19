@@ -8,9 +8,16 @@
         "vlucas/phpdotenv": "^5.4",
         "symfony/process": "^6.0"
     },
+    "require-dev": {
+        "squizlabs/php_codesniffer": "^3.7"
+    },
     "autoload": {
         "psr-4": {
             "AiAdvent\\": "src/"
         }
+    },
+    "scripts": {
+        "lint": "phpcs --standard=PSR12 src/ tools/",
+        "lint-fix": "phpcbf --standard=PSR12 src/ tools/"
     }
 }
