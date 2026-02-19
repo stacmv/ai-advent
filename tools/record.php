@@ -47,7 +47,7 @@ echo "\n   [!] IMPORTANT: Read this carefully\n\n";
 echo "   Recording will capture ONLY this area:\n";
 echo "   - Location: Top-left corner of your screen\n";
 echo "   - Size: 1200 x 700 pixels\n";
-echo "   - Duration: 60 seconds (auto-stop)\n\n";
+echo "   - Duration: 20 seconds (auto-stop)\n\n";
 echo "   WHAT YOU NEED TO DO:\n";
 echo "   1. Move your terminal window to TOP-LEFT corner\n";
 echo "   2. Resize terminal if needed (should fit in 1200x700 area)\n";
@@ -81,7 +81,7 @@ if ($isWindows) {
         '-offset_y', '0',      // Start from top
         '-video_size', '1200x700',  // Capture only terminal area
         '-i', 'desktop',
-        '-t', '60',  // Record for max 60 seconds
+        '-t', '20',  // Record for max 20 seconds
         '-c:v', 'libx264',     // Use H.264 codec
         '-preset', 'fast',     // Fast encoding
         '-crf', '18',          // Quality (lower = better, 18-28 is good)
@@ -95,7 +95,7 @@ if ($isWindows) {
         '-r', '30',
         '-s', '1200x700',
         '-i', ':0+0,0',
-        '-t', '60',
+        '-t', '20',
         '-c:v', 'libx264',
         '-preset', 'fast',
         '-crf', '18',
@@ -104,14 +104,15 @@ if ($isWindows) {
 }
 
 $recordProcess = new Process($ffmpegCmd);
-$recordProcess->setTimeout(180);  // 3 minute timeout for full process
-$recordProcess->setIdleTimeout(120);  // Idle timeout of 2 minutes
+$recordProcess->setTimeout(60);   // 60 second timeout (20s recording + overhead)
+$recordProcess->setIdleTimeout(30);  // Idle timeout of 30 seconds
 
 // Start recording in background
 $recordProcess->start();
 sleep(2);  // Give ffmpeg time to start recording
 
-echo "   [Recording started - will auto-stop after 60 seconds]\n";
+echo "   [Recording started - will auto-stop after 20 seconds]\n";
+echo "   [+] Recording for 20 seconds...\n";
 
 echo "2. Loading demo cases...\n";
 
@@ -162,7 +163,7 @@ foreach ($demoCases as $idx => $case) {
 echo "\n" . str_repeat("=", 60) . "\n";
 echo "4. Waiting for screen capture to auto-stop...\n";
 
-// Wait for ffmpeg to finish (it will auto-stop after 60 seconds due to -t flag)
+// Wait for ffmpeg to finish (it will auto-stop after 20 seconds due to -t flag)
 try {
     $recordProcess->wait();
 } catch (Exception $e) {
