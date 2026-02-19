@@ -1,17 +1,18 @@
 <?php
 
 /**
- * Get Yandex.Disk OAuth Token
+ * Get Yandex.Disk OAuth Token via Device Authorization Flow
  *
- * If YANDEX_CLIENT_ID and YANDEX_CLIENT_SECRET are set in .env,
- * uses them automatically to get token.
+ * Requires YANDEX_DISK_CLIENT_ID in .env.
+ * Optionally uses YANDEX_DISK_CLIENT_SECRET if set.
  *
- * Otherwise, uses implicit flow (no app registration needed).
+ * Flow:
+ * 1. Script requests a device code from Yandex
+ * 2. User visits URL and enters the code shown
+ * 3. Script polls for the token automatically
  */
 
 require __DIR__ . '/../vendor/autoload.php';
-
-use GuzzleHttp\Client;
 
 // Load .env
 function loadEnv($filePath) {
@@ -51,91 +52,136 @@ if (!empty($env['YANDEX_DISK_TOKEN'])) {
 }
 
 // Check if we have client ID in .env
-// Support both YANDEX_CLIENT_ID and YANDEX_DISK_CLIENT_ID
 $clientId = $env['YANDEX_DISK_CLIENT_ID'] ?? ($env['YANDEX_CLIENT_ID'] ?? null);
+$clientSecret = $env['YANDEX_DISK_CLIENT_SECRET'] ?? ($env['YANDEX_CLIENT_SECRET'] ?? null);
 
-// If we have client ID, use it for implicit flow
-if (!empty($clientId)) {
-    echo "[*] Found client ID in .env\n";
-    echo "[*] Using implicit flow with your client ID...\n\n";
-    useImplicitFlow($clientId);
-    exit(0);
+if (empty($clientId)) {
+    echo "Error: YANDEX_DISK_CLIENT_ID not found in .env\n\n";
+    echo "Add your client ID to .env:\n";
+    echo "    YANDEX_DISK_CLIENT_ID=your_app_client_id\n\n";
+    echo "Then run: make get-token\n";
+    exit(1);
 }
 
-// No client ID found
-echo "Error: YANDEX_DISK_CLIENT_ID not found in .env\n\n";
-echo "Add your client ID to .env:\n";
-echo "    YANDEX_DISK_CLIENT_ID=your_app_client_id\n\n";
-echo "Then run: make get-token\n";
-exit(1);
+// SSL certificate for Windows
+$certPath = __DIR__ . '/../cacert.pem';
+$clientOptions = file_exists($certPath) ? ['verify' => $certPath] : [];
+$client = new \GuzzleHttp\Client($clientOptions);
 
-function useImplicitFlow($clientId) {
-    echo "[*] Step 1: Visit this authorization URL:\n";
-    $authUrl = 'https://oauth.yandex.ru/authorize?' . http_build_query([
-        'response_type' => 'token',
-        'client_id' => $clientId
+// Step 1: Request device code
+echo "[*] Requesting device code...\n";
+
+$codeParams = ['client_id' => $clientId];
+$codeResponse = $client->post('https://oauth.yandex.ru/device/code', [
+    'form_params' => $codeParams,
+    'http_errors' => false,
+]);
+
+$codeData = json_decode($codeResponse->getBody(), true);
+
+if (empty($codeData['device_code']) || empty($codeData['user_code'])) {
+    echo "[-] Failed to get device code\n";
+    echo "[-] Response: " . $codeResponse->getBody() . "\n";
+    exit(1);
+}
+
+$deviceCode = $codeData['device_code'];
+$userCode = $codeData['user_code'];
+$verificationUrl = $codeData['verification_url'] ?? 'https://oauth.yandex.ru/verification_code';
+$interval = $codeData['interval'] ?? 5;
+$expiresIn = $codeData['expires_in'] ?? 300;
+
+// Step 2: Show user instructions
+echo "\n[*] Step 1: Visit this URL:\n";
+echo "    {$verificationUrl}\n\n";
+echo "[*] Step 2: Enter this code:\n";
+echo "    {$userCode}\n\n";
+echo "[*] Waiting for authorization (expires in {$expiresIn}s)...\n";
+
+// Step 3: Poll for token
+$tokenParams = [
+    'grant_type' => 'device_code',
+    'code' => $deviceCode,
+    'client_id' => $clientId,
+];
+if (!empty($clientSecret)) {
+    $tokenParams['client_secret'] = $clientSecret;
+}
+
+$deadline = time() + $expiresIn;
+$token = null;
+
+while (time() < $deadline) {
+    sleep($interval);
+
+    $tokenResponse = $client->post('https://oauth.yandex.ru/token', [
+        'form_params' => $tokenParams,
+        'http_errors' => false,
     ]);
 
-    echo "    {$authUrl}\n\n";
-    echo "[*] Step 2: After authorizing, copy the 'access_token' from the URL:\n";
-    echo "    Token: ";
-    $token = trim(fgets(STDIN));
+    $tokenData = json_decode($tokenResponse->getBody(), true);
 
-    if (empty($token)) {
-        echo "Error: No token provided\n";
-        exit(1);
+    if (!empty($tokenData['access_token'])) {
+        $token = $tokenData['access_token'];
+        break;
     }
 
-    // Test the token via WebDAV (this is what uploads actually use)
-    echo "\n[*] Testing token...\n";
-    try {
-        $certPath = __DIR__ . '/../cacert.pem';
-        $clientOptions = file_exists($certPath) ? ['verify' => $certPath] : [];
-        $client = new \GuzzleHttp\Client($clientOptions);
-
-        $testResponse = $client->request('PROPFIND', 'https://webdav.yandex.ru/', [
-            'headers' => [
-                'Authorization' => 'OAuth ' . $token,
-                'Depth' => '0',
-            ],
-            'http_errors' => false,
-        ]);
-
-        $code = $testResponse->getStatusCode();
-        // WebDAV PROPFIND returns 207 Multi-Status on success
-        if ($code === 207 || $code === 200) {
-            echo "[+] Token is valid!\n";
-            saveToken($token);
-            exit(0);
-        } else {
-            echo "[-] Token validation failed (HTTP {$code})\n";
-            $body = (string) $testResponse->getBody();
-            if ($body) {
-                echo "[-] Response: {$body}\n";
-            }
-            if ($code === 401) {
-                echo "[!] Token is invalid or expired. Get a new one.\n";
-            } elseif ($code === 403) {
-                echo "[!] Your OAuth app needs Yandex.Disk access.\n";
-                echo "[!] Go to https://oauth.yandex.ru/ -> your app -> Permissions\n";
-                echo "[!] Enable: Yandex.Disk REST API (cloud_api:disk.app_folder or cloud_api:disk.read/write)\n";
-            }
-            exit(1);
-        }
-
-    } catch (Exception $e) {
-        echo "[-] Error: " . $e->getMessage() . "\n";
-        exit(1);
+    $error = $tokenData['error'] ?? 'unknown';
+    if ($error === 'authorization_pending') {
+        echo ".";
+        continue;
     }
+
+    if ($error === 'slow_down') {
+        $interval += 1;
+        continue;
+    }
+
+    // Any other error is fatal
+    echo "\n[-] Error: {$error}\n";
+    if (!empty($tokenData['error_description'])) {
+        echo "[-] {$tokenData['error_description']}\n";
+    }
+    exit(1);
 }
+
+if (!$token) {
+    echo "\n[-] Authorization timed out. Run again.\n";
+    exit(1);
+}
+
+echo "\n[+] Token received!\n";
+
+// Step 4: Test the token via WebDAV
+echo "[*] Testing token...\n";
+try {
+    $testResponse = $client->request('PROPFIND', 'https://webdav.yandex.ru/', [
+        'headers' => [
+            'Authorization' => 'OAuth ' . $token,
+            'Depth' => '0',
+        ],
+        'http_errors' => false,
+    ]);
+
+    $code = $testResponse->getStatusCode();
+    if ($code === 207 || $code === 200) {
+        echo "[+] Token is valid!\n";
+    } else {
+        echo "[!] Warning: WebDAV test returned HTTP {$code} (token may still work)\n";
+    }
+} catch (Exception $e) {
+    echo "[!] Warning: Could not test token: " . $e->getMessage() . "\n";
+}
+
+// Save regardless — the OAuth server gave us a valid token
+saveToken($token);
+exit(0);
 
 function saveToken($token) {
     $envFile = __DIR__ . '/../.env';
 
-    // Read current .env
     $lines = file($envFile, FILE_IGNORE_NEW_LINES);
 
-    // Update or add YANDEX_DISK_TOKEN
     $found = false;
     foreach ($lines as $i => $line) {
         if (strpos($line, 'YANDEX_DISK_TOKEN=') === 0) {
@@ -149,7 +195,6 @@ function saveToken($token) {
         $lines[] = "YANDEX_DISK_TOKEN={$token}";
     }
 
-    // Write back to .env
     file_put_contents($envFile, implode("\n", $lines) . "\n");
 
     echo "[+] Token saved to .env\n";
