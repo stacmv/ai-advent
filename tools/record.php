@@ -144,8 +144,22 @@ foreach ($demoCases as $idx => $case) {
 
     // Run the CLI script
     // Pass all environment variables explicitly to the subprocess
-    // Merge $_ENV with $_SERVER to catch all loaded variables
-    $env = array_replace_recursive($_SERVER, $_ENV);
+    // Build env array: start with $_ENV (has our loaded vars), add $_SERVER
+    $env = $_ENV + $_SERVER;
+
+    // Explicitly ensure API keys are in env
+    if (!empty($_ENV['YANDEX_API_KEY'])) {
+        $env['YANDEX_API_KEY'] = $_ENV['YANDEX_API_KEY'];
+    }
+    if (!empty($_ENV['YANDEX_FOLDER_ID'])) {
+        $env['YANDEX_FOLDER_ID'] = $_ENV['YANDEX_FOLDER_ID'];
+    }
+    if (!empty($_ENV['ANTHROPIC_API_KEY'])) {
+        $env['ANTHROPIC_API_KEY'] = $_ENV['ANTHROPIC_API_KEY'];
+    }
+    if (!empty($_ENV['DEEPSEEK_API_KEY'])) {
+        $env['DEEPSEEK_API_KEY'] = $_ENV['DEEPSEEK_API_KEY'];
+    }
 
     $process = new Process(['php', $cliFile, "--case={$caseNum}"]);
     $process->setTimeout(120);
