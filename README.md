@@ -109,32 +109,42 @@ php days/day3/cli.php --case=1
 php days/day4/cli.php --case=1
 ```
 
-### Full Orchestration (Record + Upload)
+### Recording and Upload (Two-Step Process)
 
-**Get Yandex.Disk token first:**
-```bash
-make get-token
-```
-
-**Then record and upload:**
+**Step 1: Record the demo**
 ```bash
 php tools/record.php --day=1
-```
-
-Or using make:
-```bash
-make record-day1
-make record-day2
-make record-day3
-make record-day4
 ```
 
 This will:
 1. Start screen recording via ffmpeg (1200x700 top-left corner for 20 seconds)
 2. Run all demo cases for the selected day
-3. Stop recording
-4. Upload to Yandex.Disk (if token is set)
-5. Generate and output public share links
+3. Save video to `recordings/day1_TIMESTAMP.mp4`
+
+The video is saved and you can review it before uploading.
+
+**Step 2: Upload to Yandex.Disk (when ready)**
+
+First, get a token (one time):
+```bash
+make get-token
+```
+
+Then upload your video:
+```bash
+php tools/upload_video.php
+```
+
+This will:
+1. Show list of available recordings
+2. Let you select which video to upload
+3. Upload to Yandex.Disk
+4. Generate public share link
+
+**Or specify file directly:**
+```bash
+php tools/upload_video.php day1_2024-02-19_143022.mp4
+```
 
 ## Day Descriptions
 
@@ -157,7 +167,7 @@ This will:
 - Compare response depth and approach effectiveness
 
 ### Day 4: Temperature Comparison
-- Test all 3 APIs across 3 temperatures (0.0, 0.7, 1.2)
+- Test YandexGPT across 3 temperatures (0.0, 0.5, 1.0)
 - 3×3 table showing how temperature affects creativity
 - Analysis of deterministic vs creative outputs
 
