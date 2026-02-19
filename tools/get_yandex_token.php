@@ -50,109 +50,48 @@ if (!empty($env['YANDEX_DISK_TOKEN'])) {
     }
 }
 
-// Check if we have client credentials in .env
+// Check if we have client ID in .env
 // Support both YANDEX_CLIENT_ID and YANDEX_DISK_CLIENT_ID
 $clientId = $env['YANDEX_DISK_CLIENT_ID'] ?? ($env['YANDEX_CLIENT_ID'] ?? null);
-$clientSecret = $env['YANDEX_DISK_CLIENT_SECRET'] ?? ($env['YANDEX_CLIENT_SECRET'] ?? null);
 
-// If we have credentials, use them automatically
-if (!empty($clientId) && !empty($clientSecret)) {
-    echo "[*] Found YANDEX_CLIENT_ID and YANDEX_CLIENT_SECRET in .env\n";
-    echo "[*] Using authorization code flow...\n\n";
-    useAuthCodeFlow($clientId, $clientSecret, $env);
+// If we have client ID, use it for implicit flow
+if (!empty($clientId)) {
+    echo "[*] Found client ID in .env\n";
+    echo "[*] Using implicit flow with your client ID...\n\n";
+    useImplicitFlow($clientId);
     exit(0);
 }
 
-// Otherwise show options
-echo "[*] Option 1: Set client credentials in .env\n";
-echo "    Add these lines to .env:\n";
-echo "    YANDEX_DISK_CLIENT_ID=your_id\n";
-echo "    YANDEX_DISK_CLIENT_SECRET=your_secret\n\n";
+// No client ID found
+echo "Error: YANDEX_DISK_CLIENT_ID not found in .env\n\n";
+echo "Add your client ID to .env:\n";
+echo "    YANDEX_DISK_CLIENT_ID=your_app_client_id\n\n";
+echo "Then run: make get-token\n";
+exit(1);
 
-echo "[*] Option 2: Using Implicit Flow (Recommended for personal use)\n";
-echo "    This requires no app registration.\n";
-echo "    Visit this URL and authorize:\n\n";
-
-$implicitUrl = 'https://oauth.yandex.ru/authorize?response_type=token&client_id=04d700d432884c4381c926e166bc5be8';
-echo "    {$implicitUrl}\n\n";
-echo "    After authorizing, copy the 'access_token' from the URL and paste it here:\n";
-echo "    Token: ";
-$token = trim(fgets(STDIN));
-
-if (empty($token)) {
-    echo "Error: No token provided\n";
-    exit(1);
-}
-
-// Test the token
-echo "\n[*] Testing token...\n";
-try {
-    $client = new Client();
-    $response = $client->get('https://cloud-api.yandex.net/v1/disk', [
-        'headers' => ['Authorization' => 'OAuth ' . $token],
-        'http_errors' => false
-    ]);
-
-    if ($response->getStatusCode() === 200) {
-        echo "[+] Token is valid!\n";
-        saveToken($token);
-        exit(0);
-    } else {
-        echo "[-] Token validation failed (HTTP " . $response->getStatusCode() . ")\n";
-        exit(1);
-    }
-} catch (Exception $e) {
-    echo "[-] Error testing token: " . $e->getMessage() . "\n";
-    exit(1);
-}
-
-function useAuthCodeFlow($clientId, $clientSecret, $env) {
-    $redirectUri = 'http://localhost:8888/callback';
-
-    echo "[*] Step 1: Visit authorization URL:\n";
+function useImplicitFlow($clientId) {
+    echo "[*] Step 1: Visit this authorization URL:\n";
     $authUrl = 'https://oauth.yandex.ru/authorize?' . http_build_query([
-        'response_type' => 'code',
-        'client_id' => $clientId,
-        'redirect_uri' => $redirectUri,
-        'scope' => 'disk'
+        'response_type' => 'token',
+        'client_id' => $clientId
     ]);
 
     echo "    {$authUrl}\n\n";
-    echo "[*] Step 2: After authorizing, copy the 'code' parameter from the redirect URL:\n";
-    echo "    Authorization Code: ";
-    $authCode = trim(fgets(STDIN));
+    echo "[*] Step 2: After authorizing, copy the 'access_token' from the URL:\n";
+    echo "    Token: ";
+    $token = trim(fgets(STDIN));
 
-    if (empty($authCode)) {
-        echo "Error: No authorization code provided\n";
+    if (empty($token)) {
+        echo "Error: No token provided\n";
         exit(1);
     }
 
-    // Exchange authorization code for access token
-    echo "\n[*] Exchanging authorization code for access token...\n";
+    // Test the token
+    echo "\n[*] Testing token...\n";
     try {
-        $client = new \GuzzleHttp\Client();
-        $response = $client->post('https://oauth.yandex.ru/token', [
-            'form_params' => [
-                'grant_type' => 'authorization_code',
-                'code' => $authCode,
-                'client_id' => $clientId,
-                'client_secret' => $clientSecret,
-            ],
-            'http_errors' => false
-        ]);
-
-        $data = json_decode($response->getBody(), true);
-
-        if (!isset($data['access_token'])) {
-            echo "[-] Failed to get token: " . json_encode($data) . "\n";
-            exit(1);
-        }
-
-        $token = $data['access_token'];
-        echo "[+] Successfully obtained access token!\n";
-
-        // Test the token
-        echo "[*] Testing token...\n";
+        $certPath = __DIR__ . '/../cacert.pem';
+        $clientOptions = file_exists($certPath) ? ['verify' => $certPath] : [];
+        $client = new \GuzzleHttp\Client($clientOptions);
         $testResponse = $client->get('https://cloud-api.yandex.net/v1/disk', [
             'headers' => ['Authorization' => 'OAuth ' . $token],
             'http_errors' => false

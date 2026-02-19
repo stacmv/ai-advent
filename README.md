@@ -56,31 +56,16 @@ cp .env.example .env
    - `YANDEX_FOLDER_ID=b1g...`
 
 #### Yandex.Disk (for video upload)
-
-**Option 1: Automatic Token Generation (Recommended)**
-```bash
-make get-token
-```
-Or:
-```bash
-php tools/get_yandex_token.php
-```
-
-This will guide you through getting a token and automatically save it to `.env`.
-
-**Option 2: Manual Token (Implicit Flow)**
-1. Visit: `https://oauth.yandex.ru/authorize?response_type=token&client_id=04d700d432884c4381c926e166bc5be8`
-2. Authorize and copy the `access_token` from URL
-3. Add to `.env`: `YANDEX_DISK_TOKEN=y0_AgAA...`
-
-**Option 3: Using Client Credentials (if you have a registered app)**
-1. Register your app at https://oauth.yandex.ru/
-2. Add to `.env`:
-   ```
-   YANDEX_CLIENT_ID=your_client_id
-   YANDEX_CLIENT_SECRET=your_client_secret
-   ```
-3. Token will be auto-generated when needed (during recording)
+1. Create Yandex.Disk OAuth app at https://console.yandex.cloud/
+   - Navigate to **App registrations** → **Create application**
+   - Copy the **Client ID** and **Client Secret** from your app
+   - Add to `.env`:
+     ```
+     YANDEX_DISK_CLIENT_ID=your_client_id
+     YANDEX_DISK_CLIENT_SECRET=your_client_secret
+     ```
+2. Run `make get-token` to obtain and save the access token
+3. The token will be saved as `YANDEX_DISK_TOKEN` in your `.env`
 
 ## Usage
 
@@ -109,42 +94,18 @@ php days/day3/cli.php --case=1
 php days/day4/cli.php --case=1
 ```
 
-### Recording and Upload (Two-Step Process)
+### Full Orchestration (Record + Upload)
 
-**Step 1: Record the demo**
 ```bash
 php tools/record.php --day=1
 ```
 
 This will:
-1. Start screen recording via ffmpeg (1200x700 top-left corner for 20 seconds)
+1. Start screen recording via ffmpeg
 2. Run all demo cases for the selected day
-3. Save video to `recordings/day1_TIMESTAMP.mp4`
-
-The video is saved and you can review it before uploading.
-
-**Step 2: Upload to Yandex.Disk (when ready)**
-
-First, get a token (one time):
-```bash
-make get-token
-```
-
-Then upload your video:
-```bash
-php tools/upload_video.php
-```
-
-This will:
-1. Show list of available recordings
-2. Let you select which video to upload
-3. Upload to Yandex.Disk
-4. Generate public share link
-
-**Or specify file directly:**
-```bash
-php tools/upload_video.php day1_2024-02-19_143022.mp4
-```
+3. Stop recording and compress the video
+4. Upload to Yandex.Disk
+5. Generate and output public links
 
 ## Day Descriptions
 
@@ -167,7 +128,7 @@ php tools/upload_video.php day1_2024-02-19_143022.mp4
 - Compare response depth and approach effectiveness
 
 ### Day 4: Temperature Comparison
-- Test YandexGPT across 3 temperatures (0.0, 0.5, 1.0)
+- Test all 3 APIs across 3 temperatures (0.0, 0.7, 1.2)
 - 3×3 table showing how temperature affects creativity
 - Analysis of deterministic vs creative outputs
 
