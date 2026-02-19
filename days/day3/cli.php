@@ -3,10 +3,30 @@
 require __DIR__ . '/../../vendor/autoload.php';
 
 use AiAdvent\LLMClient;
-use Dotenv\Dotenv;
 
-$dotenv = Dotenv::createImmutable(__DIR__ . '/../../');
-$dotenv->load();
+// Load .env directly
+function loadEnv($filePath) {
+    $config = [];
+    if (!file_exists($filePath)) {
+        return $config;
+    }
+    $lines = file($filePath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    foreach ($lines as $line) {
+        if (strpos(trim($line), '#') === 0) continue;
+        if (strpos($line, '=') === false) continue;
+        list($key, $value) = explode('=', $line, 2);
+        $key = trim($key);
+        $value = trim($value);
+        if ((substr($value, 0, 1) === '"' && substr($value, -1) === '"') ||
+            (substr($value, 0, 1) === "'" && substr($value, -1) === "'")) {
+            $value = substr($value, 1, -1);
+        }
+        $config[$key] = $value;
+    }
+    return $config;
+}
+
+$env = loadEnv(__DIR__ . '/../../.env');
 
 $caseNum = $argv[1] ?? null;
 
@@ -26,7 +46,7 @@ echo "=== Day 3: Reasoning Approaches ===\n";
 echo "Puzzle: {$prompt}\n";
 echo str_repeat("=", 80) . "\n\n";
 
-$apiKey = getenv('ANTHROPIC_API_KEY') ?: ($_ENV['ANTHROPIC_API_KEY'] ?? '');
+$apiKey = $env['ANTHROPIC_API_KEY'] ?? '';
 if (!$apiKey) {
     echo "Error: ANTHROPIC_API_KEY not set\n";
     exit(1);
