@@ -26,8 +26,8 @@ help:
 	@echo "    make test             Run Day 4 interactively"
 	@echo ""
 	@echo "  Recording & Upload:"
-	@echo "    make record           Start screen recording and run demo
-	@echo "    make upload           Upload latest video for this day""
+	@echo "    make record           Start screen recording and run demo"
+	@echo "    make upload           Upload latest video for this day"
 	@echo ""
 	@echo "  Utilities:"
 	@echo "    make clean            Remove recordings directory"
