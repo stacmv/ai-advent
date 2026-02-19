@@ -89,7 +89,9 @@ function useImplicitFlow($clientId) {
     // Test the token
     echo "\n[*] Testing token...\n";
     try {
-        $client = new \GuzzleHttp\Client();
+        $certPath = __DIR__ . '/../cacert.pem';
+        $clientOptions = file_exists($certPath) ? ['verify' => $certPath] : [];
+        $client = new \GuzzleHttp\Client($clientOptions);
         $testResponse = $client->get('https://cloud-api.yandex.net/v1/disk', [
             'headers' => ['Authorization' => 'OAuth ' . $token],
             'http_errors' => false
