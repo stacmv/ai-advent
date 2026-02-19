@@ -25,8 +25,8 @@ foreach ($argv as $arg) {
     }
 }
 
-if (!$day || !in_array($day, ['1', '2', '3', '4'])) {
-    echo "Usage: php tools/record.php --day=<1|2|3|4>\n";
+if (!$day || !ctype_digit($day) || (int)$day < 1) {
+    echo "Usage: php tools/record.php --day=N\n";
     exit(1);
 }
 

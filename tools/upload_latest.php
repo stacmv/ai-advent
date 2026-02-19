@@ -49,8 +49,8 @@ if (!$day) {
     }
 }
 
-if (!in_array($day, ['1', '2', '3', '4'])) {
-    echo "Error: Day must be 1, 2, 3, or 4\n";
+if (!ctype_digit($day) || (int)$day < 1) {
+    echo "Error: Day must be a positive number\n";
     exit(1);
 }
 
