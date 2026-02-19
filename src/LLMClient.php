@@ -117,9 +117,14 @@ class LLMClient
         $temperature = $options['temperature'] ?? 1.0;
         $maxTokens = $options['max_tokens'] ?? 1024;
 
+        // Debug: Check if folder ID is set
+        if (empty($this->folderId)) {
+            return "Error: YANDEX_FOLDER_ID is not set";
+        }
+
         // Yandex model URI format: gpt://folder_id/model_name/version
         $body = [
-            'modelUri' => "gpt://{$this->folderId}/yandexgpt/latest",
+            'modelUri' => "gpt://{$this->folderId}/yandexgpt-lite/latest",
             'completionOptions' => [
                 'stream' => false,
                 'temperature' => $temperature,
