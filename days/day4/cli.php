@@ -3,10 +3,30 @@
 require __DIR__ . '/../../vendor/autoload.php';
 
 use AiAdvent\LLMClient;
-use Dotenv\Dotenv;
 
-$dotenv = Dotenv::createImmutable(__DIR__ . '/../../');
-$dotenv->load();
+// Load .env directly
+function loadEnv($filePath) {
+    $config = [];
+    if (!file_exists($filePath)) {
+        return $config;
+    }
+    $lines = file($filePath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    foreach ($lines as $line) {
+        if (strpos(trim($line), '#') === 0) continue;
+        if (strpos($line, '=') === false) continue;
+        list($key, $value) = explode('=', $line, 2);
+        $key = trim($key);
+        $value = trim($value);
+        if ((substr($value, 0, 1) === '"' && substr($value, -1) === '"') ||
+            (substr($value, 0, 1) === "'" && substr($value, -1) === "'")) {
+            $value = substr($value, 1, -1);
+        }
+        $config[$key] = $value;
+    }
+    return $config;
+}
+
+$env = loadEnv(__DIR__ . '/../../.env');
 
 $caseNum = $argv[1] ?? null;
 
@@ -27,9 +47,9 @@ echo "Prompt: $prompt\n";
 echo str_repeat("=", 100) . "\n\n";
 
 $apis = [
-    'claude' => getenv('ANTHROPIC_API_KEY') ?: ($_ENV['ANTHROPIC_API_KEY'] ?? ''),
-    'deepseek' => getenv('DEEPSEEK_API_KEY') ?: ($_ENV['DEEPSEEK_API_KEY'] ?? ''),
-    'yandexgpt' => getenv('YANDEX_API_KEY') ?: ($_ENV['YANDEX_API_KEY'] ?? '')
+    'claude' => $env['ANTHROPIC_API_KEY'] ?? '',
+    'deepseek' => $env['DEEPSEEK_API_KEY'] ?? '',
+    'yandexgpt' => $env['YANDEX_API_KEY'] ?? ''
 ];
 
 $temperatures = [0, 0.7, 1.2];
@@ -47,7 +67,7 @@ foreach ($temperatures as $temp) {
             $client = new LLMClient(
                 $provider,
                 $apiKey,
-                $provider === 'yandexgpt' ? ($_ENV['YANDEX_FOLDER_ID'] ?? '') : null
+                $provider === 'yandexgpt' ? ($env['YANDEX_FOLDER_ID'] ?? '') : null
             );
             $response = $client->chat($prompt, ['temperature' => $temp]);
             $results[$temp][$provider] = substr($response, 0, 250);
