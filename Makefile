@@ -27,8 +27,8 @@ help:
 	@echo "    make test             Run Day 3 interactively"
 	@echo ""
 	@echo "  Recording & Upload:"
-	@echo "    make record           Start screen recording and run demo
-	@echo "    make upload           Upload latest video for this day""
+	@echo "    make record           Start screen recording and run demo"
+	@echo "    make upload           Upload latest video for this day"
 	@echo ""
 	@echo "  Bootstrap:"
 	@echo "    make next-day N=5     Bootstrap next day branch"
@@ -41,32 +41,17 @@ install:
 	composer install
 
 setup:
-get-token:
-	php tools/get_yandex_token.php
 	@if [ ! -f .env ]; then \
-get-token:
-	php tools/get_yandex_token.php
 		cp .env.example .env; \
-get-token:
-	php tools/get_yandex_token.php
 		echo "[+] Created .env from .env.example"; \
-get-token:
-	php tools/get_yandex_token.php
-		echo "[!]  Please fill in your API keys in .env"; \
-get-token:
-	php tools/get_yandex_token.php
+		echo "[!] Please fill in your API keys in .env"; \
 	else \
-get-token:
-	php tools/get_yandex_token.php
 		echo "[+] .env already exists"; \
-get-token:
-	php tools/get_yandex_token.php
 	fi
-get-token:
-	php tools/get_yandex_token.php
 
 get-token:
 	php tools/get_yandex_token.php
+
 lint:
 	composer run lint
 
