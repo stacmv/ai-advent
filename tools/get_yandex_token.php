@@ -51,8 +51,9 @@ if (!empty($env['YANDEX_DISK_TOKEN'])) {
 }
 
 // Check if we have client credentials in .env
-$clientId = $env['YANDEX_CLIENT_ID'] ?? null;
-$clientSecret = $env['YANDEX_CLIENT_SECRET'] ?? null;
+// Support both YANDEX_CLIENT_ID and YANDEX_DISK_CLIENT_ID
+$clientId = $env['YANDEX_DISK_CLIENT_ID'] ?? ($env['YANDEX_CLIENT_ID'] ?? null);
+$clientSecret = $env['YANDEX_DISK_CLIENT_SECRET'] ?? ($env['YANDEX_CLIENT_SECRET'] ?? null);
 
 // If we have credentials, use them automatically
 if (!empty($clientId) && !empty($clientSecret)) {
@@ -65,8 +66,8 @@ if (!empty($clientId) && !empty($clientSecret)) {
 // Otherwise show options
 echo "[*] Option 1: Set client credentials in .env\n";
 echo "    Add these lines to .env:\n";
-echo "    YANDEX_CLIENT_ID=your_id\n";
-echo "    YANDEX_CLIENT_SECRET=your_secret\n\n";
+echo "    YANDEX_DISK_CLIENT_ID=your_id\n";
+echo "    YANDEX_DISK_CLIENT_SECRET=your_secret\n\n";
 
 echo "[*] Option 2: Using Implicit Flow (Recommended for personal use)\n";
 echo "    This requires no app registration.\n";
