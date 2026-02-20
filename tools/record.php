@@ -90,6 +90,7 @@ if ($isWindows) {
         '-c:v', 'libx264',
         '-preset', 'fast',
         '-crf', '18',
+        '-y',  // overwrite output file
         $recordingFile
     ];
 } else {
@@ -102,13 +103,13 @@ if ($isWindows) {
         '-c:v', 'libx264',
         '-preset', 'fast',
         '-crf', '18',
+        '-y',  // overwrite output file
         $recordingFile
     ];
 }
 
 $recordProcess = new Process($ffmpegCmd);
-$recordProcess->setTimeout(null); // No timeout
-$recordProcess->disableOutput();  // Don't buffer ffmpeg output
+$recordProcess->setTimeout(null);
 $recordProcess->start();
 sleep(2);
 
@@ -152,9 +153,21 @@ foreach ($caseKeys as $i => $caseNum) {
 echo "\n[3/3] Press Enter to stop recording...\n";
 fgets(STDIN);
 
-// Stop ffmpeg gracefully with SIGTERM (allows proper file finalization)
+// Stop ffmpeg gracefully by sending SIGINT (Ctrl+C equivalent)
+// which allows ffmpeg to finalize the MP4 file properly
 if ($recordProcess->isRunning()) {
-    $recordProcess->stop(5, defined('SIGTERM') ? SIGTERM : 15);
+    if ($isWindows) {
+        // On Windows, use taskkill with /T to terminate process tree
+        shell_exec('taskkill /PID ' . $recordProcess->getPid() . ' /T /F 2>nul');
+    } else {
+        // On Unix, send SIGINT for graceful shutdown
+        shell_exec('kill -INT ' . $recordProcess->getPid() . ' 2>/dev/null');
+        sleep(2);
+        if ($recordProcess->isRunning()) {
+            shell_exec('kill -TERM ' . $recordProcess->getPid() . ' 2>/dev/null');
+        }
+    }
+    sleep(1);
 }
 
 if (!file_exists($recordingFile)) {
