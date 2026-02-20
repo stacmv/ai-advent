@@ -32,8 +32,7 @@ function loadEnv($filePath) {
 function calculateCost(string $model, int $totalTokens): float {
     $ratePerK = match (true) {
         str_contains($model, 'yandexgpt-lite') => 0.20,
-        str_contains($model, 'yandexgpt-pro')  => 0.60,
-        default                                 => 0.40,
+        default                                => 0.40,
     };
     return round($totalTokens * $ratePerK / 1000, 4);
 }
@@ -46,9 +45,9 @@ if (empty($env['YANDEX_API_KEY']) || empty($env['YANDEX_FOLDER_ID'])) {
 }
 
 $models = [
-    ['tier' => 'СЛАБАЯ',  'label' => 'YandexGPT Lite', 'model' => 'yandexgpt-lite/latest'],
-    ['tier' => 'СРЕДНЯЯ', 'label' => 'YandexGPT',       'model' => 'yandexgpt/latest'],
-    ['tier' => 'СИЛЬНАЯ', 'label' => 'YandexGPT Pro',   'model' => 'yandexgpt-pro/latest'],
+    ['tier' => 'СЛАБАЯ',  'label' => 'YandexGPT Lite',   'model' => 'yandexgpt-lite/latest'],
+    ['tier' => 'СРЕДНЯЯ', 'label' => 'YandexGPT Pro',    'model' => 'yandexgpt/latest'],
+    ['tier' => 'СИЛЬНАЯ', 'label' => 'YandexGPT Pro RC', 'model' => 'yandexgpt/rc'],
 ];
 
 function runComparison(string $prompt, array $env, array $models) {
