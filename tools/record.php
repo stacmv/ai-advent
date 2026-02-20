@@ -108,9 +108,27 @@ if ($isWindows) {
     ];
 }
 
-$recordProcess = new Process($ffmpegCmd);
-$recordProcess->setTimeout(null);
-$recordProcess->start();
+// Start ffmpeg via proc_open so we can send 'q' to stdin for graceful stop
+$ffmpegCmdStr = implode(' ', array_map('escapeshellarg', $ffmpegCmd));
+$ffmpegPipes = [];
+$ffmpegProc = proc_open(
+    $ffmpegCmdStr,
+    [
+        0 => ['pipe', 'r'],  // stdin — we'll write 'q' to stop
+        1 => ['pipe', 'w'],  // stdout
+        2 => ['pipe', 'w'],  // stderr
+    ],
+    $ffmpegPipes
+);
+
+if (!is_resource($ffmpegProc)) {
+    echo "Error: Failed to start ffmpeg\n";
+    exit(1);
+}
+
+// Make stdout/stderr non-blocking so they don't deadlock
+stream_set_blocking($ffmpegPipes[1], false);
+stream_set_blocking($ffmpegPipes[2], false);
 sleep(2);
 
 // Load demo cases and run each one separately
@@ -153,22 +171,22 @@ foreach ($caseKeys as $i => $caseNum) {
 echo "\n[3/3] Press Enter to stop recording...\n";
 fgets(STDIN);
 
-// Stop ffmpeg gracefully by sending SIGINT (Ctrl+C equivalent)
-// which allows ffmpeg to finalize the MP4 file properly
-if ($recordProcess->isRunning()) {
-    if ($isWindows) {
-        // On Windows, use taskkill with /T to terminate process tree
-        shell_exec('taskkill /PID ' . $recordProcess->getPid() . ' /T /F 2>nul');
-    } else {
-        // On Unix, send SIGINT for graceful shutdown
-        shell_exec('kill -INT ' . $recordProcess->getPid() . ' 2>/dev/null');
-        sleep(2);
-        if ($recordProcess->isRunning()) {
-            shell_exec('kill -TERM ' . $recordProcess->getPid() . ' 2>/dev/null');
-        }
-    }
-    sleep(1);
+// Send 'q' to ffmpeg stdin — this is ffmpeg's graceful quit command
+// It finishes encoding, writes the MP4 trailer, and exits cleanly
+echo "   Finalizing video...\n";
+fwrite($ffmpegPipes[0], "q");
+fclose($ffmpegPipes[0]);
+
+// Wait for ffmpeg to finish writing (up to 10 seconds)
+$waitStart = time();
+while (proc_get_status($ffmpegProc)['running'] && (time() - $waitStart) < 10) {
+    usleep(200000); // 200ms
 }
+
+// Clean up pipes and process
+fclose($ffmpegPipes[1]);
+fclose($ffmpegPipes[2]);
+proc_close($ffmpegProc);
 
 if (!file_exists($recordingFile)) {
     echo "Error: Recording failed - file not created\n";
