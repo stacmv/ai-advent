@@ -1,29 +1,33 @@
-.PHONY: help install lint lint-fix setup get-token next-day clean
+.PHONY: help install lint test demo record upload clean setup get-token next-day
 
 help:
-	@echo "AI Advent Challenge - Main Branch"
-	@echo "=================================="
 	@echo ""
-	@echo "Setup (Run these first):"
-	@echo "  make install          Install composer dependencies"
-	@echo "  make setup            Copy .env.example to .env"
-	@echo "  make get-token        Get Yandex.Disk OAuth token"
+	@echo "*** AI ADVENT - DAY 5: Версии моделей ***"
+	@echo "=========================================="
 	@echo ""
-	@echo "Code Quality:"
-	@echo "  make lint             Check code style (PSR-12)"
-	@echo "  make lint-fix         Auto-fix code style issues"
+	@echo "[*] Available commands:"
 	@echo ""
-	@echo "Bootstrap:"
-	@echo "  make next-day N=5     Bootstrap next day branch"
+	@echo "  Setup:"
+	@echo "    make install          Install composer dependencies"
+	@echo "    make setup            Copy .env.example to .env"
+	@echo "    make get-token        Get Yandex.Disk OAuth token"
 	@echo ""
-	@echo "Utilities:"
-	@echo "  make clean            Remove recordings directory"
+	@echo "  Code Quality:"
+	@echo "    make lint             Check code style (PSR-12)"
 	@echo ""
-	@echo "Then switch to a day branch to record/upload:"
-	@echo "  git checkout day1     # Day 1: Basic API Call"
-	@echo "  git checkout day2     # Day 2: Response Format Control"
-	@echo "  git checkout day3     # Day 3: Reasoning Approaches"
-	@echo "  git checkout day4     # Day 4: Temperature Comparison"
+	@echo "  Running:"
+	@echo "    make demo             Run Day 5 demo"
+	@echo "    make test             Run Day 5 interactively"
+	@echo ""
+	@echo "  Recording & Upload:"
+	@echo "    make record           Start screen recording and run demo"
+	@echo "    make upload           Upload latest video for this day"
+	@echo ""
+	@echo "  Bootstrap:"
+	@echo "    make next-day N=6     Bootstrap next day branch"
+	@echo ""
+	@echo "  Utilities:"
+	@echo "    make clean            Remove recordings directory"
 	@echo ""
 
 install:
@@ -44,8 +48,21 @@ get-token:
 lint:
 	composer run lint
 
-lint-fix:
-	composer run lint-fix
+test:
+	@echo "Running Day 5 CLI (interactive mode)..."
+	php days/day5/cli.php
+
+demo:
+	@echo "Running Day 5 demo..."
+	php days/day5/cli.php --case=1
+
+record:
+	@echo "Starting screen recording for Day 5 demo..."
+	php tools/record.php --day=5
+
+upload:
+	@echo "Uploading latest Day 5 video..."
+	php tools/upload_latest.php 5
 
 next-day:
 	@if [ -z "$(N)" ]; then echo "Usage: make next-day N=<day_number> [T=\"Title\"]"; exit 1; fi
