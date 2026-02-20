@@ -48,6 +48,7 @@ $models = [
     ['tier' => 'СЛАБАЯ',  'label' => 'YandexGPT Lite',   'model' => 'yandexgpt-lite/latest'],
     ['tier' => 'СРЕДНЯЯ', 'label' => 'YandexGPT Pro',    'model' => 'yandexgpt/latest'],
     ['tier' => 'СИЛЬНАЯ', 'label' => 'YandexGPT Pro RC', 'model' => 'yandexgpt/rc'],
+    ['tier' => 'ALICE',   'label' => 'Alice AI LLM',     'model' => 'aliceai-llm/latest'],
 ];
 
 function runComparison(string $prompt, array $env, array $models) {
@@ -65,8 +66,9 @@ function runComparison(string $prompt, array $env, array $models) {
         $label = $modelInfo['label'];
         $model = $modelInfo['model'];
 
+        $limitedPrompt = $prompt . "\n\nОтвечай кратко, не более 10 предложений.";
         $startTime = microtime(true);
-        $metrics = $client->chatWithMetrics($prompt, ['model' => $model]);
+        $metrics = $client->chatWithMetrics($limitedPrompt, ['model' => $model]);
         $elapsed = microtime(true) - $startTime;
 
         echo "[" . str_pad($tier, 6) . " - {$label}] ...  " . round($elapsed, 2) . "s\n";
@@ -87,17 +89,17 @@ function runComparison(string $prompt, array $env, array $models) {
     // Phase 2: Display metrics table
     echo "\n--- Метрики ---\n";
     echo str_pad("Уровень", 8) . " | " .
-         str_pad("Модель", 15) . " | " .
+         str_pad("Модель", 16) . " | " .
          str_pad("Время", 7) . " | " .
          str_pad("Вх.", 5) . " | " .
          str_pad("Вых.", 5) . " | " .
          str_pad("Всего", 5) . " | " .
          "Стоимость\n";
-    echo str_repeat("-", 75) . "\n";
+    echo str_repeat("-", 78) . "\n";
 
     foreach ($results as $result) {
         echo str_pad($result['tier'], 8) . " | " .
-             str_pad($result['label'], 15) . " | " .
+             str_pad($result['label'], 16) . " | " .
              str_pad(round($result['elapsed'], 2) . "s", 7) . " | " .
              str_pad($result['input_tokens'], 5) . " | " .
              str_pad($result['output_tokens'], 5) . " | " .
@@ -116,7 +118,7 @@ function runComparison(string $prompt, array $env, array $models) {
     echo "=== Вывод моделей о себе ===\n";
 
     // Build summary for AI analysis
-    $summaryPrompt = "Ты — аналитик AI-систем. Ниже приведены результаты тестирования трёх версий YandexGPT на одном и том же запросе.\n\n";
+    $summaryPrompt = "Ты — аналитик AI-систем. Ниже приведены результаты тестирования четырёх моделей Yandex на одном и том же запросе.\n\n";
     $summaryPrompt .= "=== Запрос пользователя ===\n{$prompt}\n\n";
     $summaryPrompt .= "=== Результаты ===\n";
 
