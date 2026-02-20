@@ -53,8 +53,8 @@ test:
 	php days/day5/cli.php
 
 demo:
-	@echo "Running Day 5 demo..."
-	php days/day5/cli.php --case=1
+	@echo "Running Day 5 demo (all cases)..."
+	php days/day5/cli.php --all
 
 record:
 	@echo "Starting screen recording for Day 5 demo..."

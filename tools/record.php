@@ -5,7 +5,8 @@ require __DIR__ . '/../vendor/autoload.php';
 use Symfony\Component\Process\Process;
 
 // Load .env directly - simple parser
-function loadEnv($filePath) {
+function loadEnv($filePath)
+{
     $config = [];
     if (!file_exists($filePath)) {
         return $config;
@@ -20,8 +21,10 @@ function loadEnv($filePath) {
             list($key, $value) = explode('=', $line, 2);
             $key = trim($key);
             $value = trim($value);
-            if ((substr($value, 0, 1) === '"' && substr($value, -1) === '"') ||
-                (substr($value, 0, 1) === "'" && substr($value, -1) === "'")) {
+            if (
+                (substr($value, 0, 1) === '"' && substr($value, -1) === '"') ||
+                (substr($value, 0, 1) === "'" && substr($value, -1) === "'")
+            ) {
                 $value = substr($value, 1, -1);
             }
             $config[$key] = $value;
@@ -47,54 +50,15 @@ if (!$day || !ctype_digit($day) || (int)$day < 1) {
 }
 
 $cliFile = __DIR__ . "/../days/day{$day}/cli.php";
-$demoCasesFile = __DIR__ . "/../days/day{$day}/demo_cases.php";
 
-if (!file_exists($demoCasesFile)) {
-    echo "Error: Demo cases file not found: $demoCasesFile\n";
-    exit(1);
-}
-
-require $demoCasesFile;
-
-if (!isset($demoCases) || empty($demoCases)) {
-    echo "Error: No demo cases found\n";
+if (!file_exists($cliFile)) {
+    echo "Error: CLI file not found: $cliFile\n";
     exit(1);
 }
 
 echo "=== AI Advent Recording (Day {$day}) ===\n\n";
 
-// Step 1: Dry run to measure demo duration
-echo "[1/4] Measuring demo duration (dry run)...\n";
-
-$dryStart = microtime(true);
-
-foreach ($demoCases as $idx => $case) {
-    $caseNum = $idx + 1;
-    echo "   Running case {$caseNum}/" . count($demoCases) . "...\r";
-
-    $process = new Process(['php', $cliFile, "--case={$caseNum}"]);
-    $process->setTimeout(120);
-    $process->setEnv($env);
-    $process->run();
-
-    if (!$process->isSuccessful()) {
-        echo "\n[-] Case {$caseNum} failed: " . $process->getErrorOutput() . "\n";
-        exit(1);
-    }
-
-    if ($idx < count($demoCases) - 1) {
-        sleep(3);
-    }
-}
-
-$dryDuration = microtime(true) - $dryStart;
-$recordDuration = (int)ceil($dryDuration * 1.1);
-// Minimum 10 seconds, add 5 for startup buffer
-$recordDuration = max($recordDuration, 10) + 5;
-
-echo "   Demo took " . round($dryDuration, 1) . "s, recording for {$recordDuration}s\n\n";
-
-// Step 2: Prepare recording
+// Prepare recording directory
 if (!is_dir(__DIR__ . '/../recordings')) {
     mkdir(__DIR__ . '/../recordings', 0755, true);
 }
@@ -102,15 +66,15 @@ if (!is_dir(__DIR__ . '/../recordings')) {
 $timestamp = date('Y-m-d_His');
 $recordingFile = __DIR__ . "/../recordings/day{$day}_{$timestamp}.mp4";
 
-echo "[2/4] Move terminal to TOP-LEFT corner, press ENTER to start recording:\n";
+echo "[1/3] Move terminal to TOP-LEFT corner, press ENTER to start recording:\n";
 echo "      ";
 fgets(STDIN);
 
 echo "\n[+] Starting in 3 seconds...\n";
 sleep(3);
 
-// Step 3: Record
-echo "[3/4] Recording ({$recordDuration}s)...\n";
+// Step 2: Start ffmpeg (without -t limit, runs indefinitely)
+echo "[2/3] Starting ffmpeg (recording will continue until you press Enter)...\n";
 
 $isWindows = strtoupper(substr(PHP_OS, 0, 3)) === 'WIN';
 
@@ -123,7 +87,6 @@ if ($isWindows) {
         '-offset_y', '0',
         '-video_size', '1200x700',
         '-i', 'desktop',
-        '-t', (string)$recordDuration,
         '-c:v', 'libx264',
         '-preset', 'fast',
         '-crf', '18',
@@ -136,7 +99,6 @@ if ($isWindows) {
         '-r', '30',
         '-s', '1200x700',
         '-i', ':0+0,0',
-        '-t', (string)$recordDuration,
         '-c:v', 'libx264',
         '-preset', 'fast',
         '-crf', '18',
@@ -145,48 +107,34 @@ if ($isWindows) {
 }
 
 $recordProcess = new Process($ffmpegCmd);
-$recordProcess->setTimeout($recordDuration + 30);
+$recordProcess->setTimeout(null); // No timeout
 $recordProcess->start();
 sleep(2);
 
-// Run demo cases (recorded this time)
-foreach ($demoCases as $idx => $case) {
-    $caseNum = $idx + 1;
-    echo "   [Case {$caseNum}] {$case['name']}\n";
+// Run all demo cases interactively
+$process = new Process(['php', $cliFile, '--all']);
+$process->setTimeout(600); // 10 minutes max
+$process->setEnv($env);
+$process->setTty(true);
+$process->run();
 
-    $process = new Process(['php', $cliFile, "--case={$caseNum}"]);
-    $process->setTimeout(120);
-    $process->setEnv($env);
-    $process->run();
+echo "\n";
 
-    echo $process->getOutput();
+// Wait for user to press Enter before stopping recording
+echo "\n[3/3] Press Enter to stop recording...\n";
+fgets(STDIN);
 
-    if (!$process->isSuccessful()) {
-        echo "   Warning: Case {$caseNum} failed: " . $process->getErrorOutput() . "\n";
-    }
-
-    if ($idx < count($demoCases) - 1) {
-        sleep(3);
-    }
-}
-
-// Wait for ffmpeg to finish
-echo "\n   Waiting for recording to finish...\n";
-try {
-    $recordProcess->wait();
-} catch (Exception $e) {
-    $recordProcess->stop(5);
-}
+// Stop ffmpeg
+$recordProcess->stop(5);
 
 if (!file_exists($recordingFile)) {
     echo "Error: Recording failed - file not created\n";
     exit(1);
 }
 
-// Step 4: Done
-echo "\n[4/4] Done!\n";
+// Done
+echo "\n[+] Recording complete!\n";
 echo str_repeat("=", 60) . "\n";
 echo "[+] Video: {$recordingFile}\n";
 echo "[+] Size: " . round(filesize($recordingFile) / 1024 / 1024, 2) . " MB\n";
-echo "[+] Duration: ~{$recordDuration}s\n";
 echo "\nNext: review the video, then run 'make upload'\n";

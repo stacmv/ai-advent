@@ -45,6 +45,27 @@ class LLMClient
         }
     }
 
+    /**
+     * Send a chat message and return metrics (for YandexGPT only)
+     */
+    public function chatWithMetrics(string $prompt, array $options = []): array
+    {
+        try {
+            if ($this->provider !== 'yandexgpt') {
+                throw new \InvalidArgumentException("chatWithMetrics only supports YandexGPT provider");
+            }
+            return $this->callYandexGPTWithMetrics($prompt, $options);
+        } catch (GuzzleException $e) {
+            return [
+                'text' => "Error: " . $e->getMessage(),
+                'input_tokens' => 0,
+                'output_tokens' => 0,
+                'total_tokens' => 0,
+                'model' => 'unknown',
+            ];
+        }
+    }
+
     private function callClaude(string $prompt, array $options): string
     {
         $systemPrompt = $options['system'] ?? '';
@@ -116,9 +137,10 @@ class LLMClient
     {
         $temperature = $options['temperature'] ?? 1.0;
         $maxTokens = $options['max_tokens'] ?? 1024;
+        $model = $options['model'] ?? 'yandexgpt-lite/latest';
 
         $body = [
-            'modelUri' => "gpt://{$this->folderId}/yandexgpt-lite/latest",
+            'modelUri' => "gpt://{$this->folderId}/{$model}",
             'completionOptions' => [
                 'stream' => false,
                 'temperature' => $temperature,
@@ -142,5 +164,47 @@ class LLMClient
 
         $data = json_decode($response->getBody(), true);
         return $data['result']['alternatives'][0]['message']['text'] ?? 'No response';
+    }
+
+    private function callYandexGPTWithMetrics(string $prompt, array $options): array
+    {
+        $temperature = $options['temperature'] ?? 1.0;
+        $maxTokens = $options['max_tokens'] ?? 1024;
+        $model = $options['model'] ?? 'yandexgpt-lite/latest';
+
+        $body = [
+            'modelUri' => "gpt://{$this->folderId}/{$model}",
+            'completionOptions' => [
+                'stream' => false,
+                'temperature' => $temperature,
+                'maxTokens' => $maxTokens
+            ],
+            'messages' => [
+                [
+                    'role' => 'user',
+                    'text' => $prompt
+                ]
+            ]
+        ];
+
+        $response = $this->httpClient->post('https://llm.api.cloud.yandex.net/foundationModels/v1/completion', [
+            'headers' => [
+                'Authorization' => 'Api-Key ' . $this->apiKey,
+                'content-type' => 'application/json'
+            ],
+            'json' => $body
+        ]);
+
+        $data = json_decode($response->getBody(), true);
+        $text = $data['result']['alternatives'][0]['message']['text'] ?? 'No response';
+        $usage = $data['result']['usage'] ?? [];
+
+        return [
+            'text' => $text,
+            'input_tokens' => (int)($usage['inputTextTokens'] ?? 0),
+            'output_tokens' => (int)($usage['completionTokens'] ?? 0),
+            'total_tokens' => (int)($usage['totalTokens'] ?? 0),
+            'model' => $model,
+        ];
     }
 }
