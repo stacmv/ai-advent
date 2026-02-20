@@ -108,6 +108,7 @@ if ($isWindows) {
 
 $recordProcess = new Process($ffmpegCmd);
 $recordProcess->setTimeout(null); // No timeout
+$recordProcess->disableOutput();  // Don't buffer ffmpeg output
 $recordProcess->start();
 sleep(2);
 
@@ -151,8 +152,10 @@ foreach ($caseKeys as $i => $caseNum) {
 echo "\n[3/3] Press Enter to stop recording...\n";
 fgets(STDIN);
 
-// Stop ffmpeg
-$recordProcess->stop(5);
+// Stop ffmpeg gracefully with SIGTERM (allows proper file finalization)
+if ($recordProcess->isRunning()) {
+    $recordProcess->stop(5, defined('SIGTERM') ? SIGTERM : 15);
+}
 
 if (!file_exists($recordingFile)) {
     echo "Error: Recording failed - file not created\n";
