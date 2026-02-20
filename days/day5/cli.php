@@ -38,6 +38,12 @@ function c(string $code, string $text): string
     return "\033[{$code}m{$text}\033[0m";
 }
 
+function mbPad(string $str, int $width, string $pad = ' ', int $type = STR_PAD_RIGHT): string
+{
+    $diff = strlen($str) - mb_strlen($str);
+    return str_pad($str, $width + $diff, $pad, $type);
+}
+
 function tierColor(string $tier): string
 {
     return match ($tier) {
@@ -67,6 +73,34 @@ function bar(int $value, int $maxValue, int $width = 20): string
     $filled = (int)round($value / $maxValue * $width);
     $filled = min($filled, $width);
     return str_repeat('█', $filled) . str_repeat('░', $width - $filled);
+}
+
+function wrapText(string $text, int $maxWidth): array
+{
+    $output = [];
+    $rawLines = explode("\n", $text);
+    foreach ($rawLines as $rawLine) {
+        if (mb_strlen($rawLine) <= $maxWidth) {
+            $output[] = $rawLine;
+            continue;
+        }
+        $words = explode(' ', $rawLine);
+        $current = '';
+        foreach ($words as $word) {
+            if ($current === '') {
+                $current = $word;
+            } elseif (mb_strlen($current . ' ' . $word) <= $maxWidth) {
+                $current .= ' ' . $word;
+            } else {
+                $output[] = $current;
+                $current = $word;
+            }
+        }
+        if ($current !== '') {
+            $output[] = $current;
+        }
+    }
+    return $output;
 }
 
 function calculateCost(string $model, int $totalTokens): float
@@ -102,15 +136,18 @@ function runComparison(string $prompt, array $env, array $models)
     echo c('1;37', "║") . c('1;33', "           Day 5: Версии моделей                           ") . c('1;37', "║") . "\n";
     echo c('1;37', "╚══════════════════════════════════════════════════════════════╝") . "\n";
 
-    // Prompt box
-    $displayPrompt = mb_substr($prompt, 0, 56);
-    if (mb_strlen($prompt) > 56) {
-        $displayPrompt .= '...';
+    // Prompt box (full prompt, word-wrapped)
+    $boxW = 60;
+    $innerW = $boxW - 2; // space inside borders
+    echo c('90', "┌" . str_repeat("─", $boxW) . "┐") . "\n";
+    echo c('90', "│") . " " . c('1;37', "Prompt:")
+        . str_repeat(' ', $innerW - 8) . c('90', "│") . "\n";
+    $promptLines = wrapText($prompt, $innerW - 2);
+    foreach ($promptLines as $pl) {
+        echo c('90', "│") . " " . c('37', $pl)
+            . str_repeat(' ', max(0, $innerW - 1 - mb_strlen($pl))) . c('90', "│") . "\n";
     }
-    echo c('90', "┌──────────────────────────────────────────────────────────────┐") . "\n";
-    echo c('90', "│") . " " . c('1;37', "Prompt: ") . c('37', $displayPrompt)
-        . str_repeat(' ', max(0, 53 - mb_strlen($displayPrompt))) . c('90', "│") . "\n";
-    echo c('90', "└──────────────────────────────────────────────────────────────┘") . "\n";
+    echo c('90', "└" . str_repeat("─", $boxW) . "┘") . "\n";
     echo "\n";
 
     // Phase 1: Run each model tier
@@ -170,8 +207,8 @@ function runComparison(string $prompt, array $env, array $models)
 
     foreach ($results as $i => $r) {
         $timeStr = str_pad(round($r['elapsed'], 2) . "s", 7);
-        echo c('90', "   │") . " " . colorTier(str_pad($r['tier'], 8)) . " "
-            . c('90', "│") . " " . colorLabel($r['tier'], str_pad($r['label'], 16)) . " "
+        echo c('90', "   │") . " " . c(tierColor($r['tier']), mbPad($r['tier'], 8)) . " "
+            . c('90', "│") . " " . c(tierColor($r['tier']), mbPad($r['label'], 16)) . " "
             . c('90', "│") . " " . c('1;37', $timeStr) . " "
             . c('90', "│") . " " . c('37', str_pad($r['input_tokens'], 4, ' ', STR_PAD_LEFT)) . "  "
             . c('90', "│") . " " . c('37', str_pad($r['output_tokens'], 4, ' ', STR_PAD_LEFT)) . "  "
@@ -203,12 +240,13 @@ function runComparison(string $prompt, array $env, array $models)
     echo "\n";
     echo c('1;37', " ▸ Ответы моделей") . "\n";
 
+    $wrapWidth = 70;
+
     foreach ($results as $r) {
         echo "\n";
         $colorCode = tierColor($r['tier']);
         echo c($colorCode, "   ┌─ ") . c("1;{$colorCode}", $r['tier'] . " — " . $r['label']) . "\n";
-        // Indent each line of the response
-        $lines = explode("\n", $r['text']);
+        $lines = wrapText($r['text'], $wrapWidth);
         foreach ($lines as $line) {
             echo c($colorCode, "   │") . " " . c('37', $line) . "\n";
         }
@@ -245,8 +283,8 @@ function runComparison(string $prompt, array $env, array $models)
 
         $conclusionMetrics = $client->chatWithMetrics($summaryPrompt, ['model' => $r['model']]);
 
-        echo "\r" . str_repeat(' ', 40) . "\r"; // clear "анализ..."
-        $lines = explode("\n", $conclusionMetrics['text']);
+        echo "\r" . str_repeat(' ', 40) . "\r";
+        $lines = wrapText($conclusionMetrics['text'], $wrapWidth);
         foreach ($lines as $line) {
             echo c($colorCode, "   │") . " " . c('37', $line) . "\n";
         }
@@ -261,9 +299,10 @@ $arg = $argv[1] ?? null;
 
 if ($arg === '--all') {
     require __DIR__ . '/demo_cases.php';
-    foreach ($demoCases as $idx => $case) {
+    $cases = array_values($demoCases);
+    foreach ($cases as $idx => $case) {
         runComparison($case['prompt'], $env, $models);
-        if ($idx < count($demoCases) - 1) {
+        if ($idx < count($cases) - 1) {
             echo "\n" . c('1;90', str_repeat("═", 62)) . "\n";
             echo c('33', "   [Press Enter for next case...]") . "\n";
             fgets(STDIN);

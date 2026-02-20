@@ -115,10 +115,10 @@ sleep(2);
 $process = new Process(['php', $cliFile, '--all']);
 $process->setTimeout(600); // 10 minutes max
 $process->setEnv($env);
-$process->setTty(true);
-$process->run();
-
-echo "\n";
+$process->setInput(STDIN);
+$process->run(function ($type, $buffer) {
+    echo $buffer;
+});
 
 // Wait for user to press Enter before stopping recording
 echo "\n[3/3] Press Enter to stop recording...\n";
