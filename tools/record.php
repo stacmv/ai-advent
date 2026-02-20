@@ -111,14 +111,41 @@ $recordProcess->setTimeout(null); // No timeout
 $recordProcess->start();
 sleep(2);
 
-// Run all demo cases interactively
-$process = new Process(['php', $cliFile, '--all']);
-$process->setTimeout(600); // 10 minutes max
-$process->setEnv($env);
-$process->setInput(STDIN);
-$process->run(function ($type, $buffer) {
-    echo $buffer;
-});
+// Load demo cases and run each one separately
+$demoCasesFile = __DIR__ . "/../days/day{$day}/demo_cases.php";
+if (!file_exists($demoCasesFile)) {
+    echo "Error: Demo cases file not found: $demoCasesFile\n";
+    exit(1);
+}
+
+require $demoCasesFile;
+
+if (!isset($demoCases) || empty($demoCases)) {
+    echo "Error: No demo cases found\n";
+    exit(1);
+}
+
+$caseKeys = array_keys($demoCases);
+foreach ($caseKeys as $i => $caseNum) {
+    $case = $demoCases[$caseNum];
+    echo "   [Case {$caseNum}] {$case['name']}\n";
+
+    $process = new Process(['php', $cliFile, "--case={$caseNum}"]);
+    $process->setTimeout(300);
+    $process->setEnv($env);
+    $process->run(function ($type, $buffer) {
+        echo $buffer;
+    });
+
+    if (!$process->isSuccessful()) {
+        echo "   Warning: Case {$caseNum} failed: " . $process->getErrorOutput() . "\n";
+    }
+
+    if ($i < count($caseKeys) - 1) {
+        echo "\n   [Press Enter for next case...]\n";
+        fgets(STDIN);
+    }
+}
 
 // Wait for user to press Enter before stopping recording
 echo "\n[3/3] Press Enter to stop recording...\n";
