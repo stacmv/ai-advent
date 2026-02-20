@@ -36,8 +36,8 @@ All operations are done via `make`. Run `make` or `make help` on any branch to s
 | Command | Description |
 |---------|-------------|
 | `make test` | Run the day's CLI interactively (prompts for input) |
-| `make demo` | Run with pre-configured demo cases (non-interactive) |
-| `make record` | Dry-run demo to measure timing, then screen-record the demo with ffmpeg (duration = measured time + 10%) |
+| `make demo` | Run all demo cases with Enter pauses between them |
+| `make record` | Screen-record the demo with ffmpeg. User-paced: press Enter to start, Enter between cases, Enter to stop |
 | `make upload` | Upload latest recorded video to Yandex.Disk, print submission message with GitHub and video links |
 | `make lint` | Check code style (PSR-12) |
 | `make clean` | Remove `recordings/` directory |
@@ -98,6 +98,7 @@ Each day lives on its own branch. Shared code (LLMClient, tools) is on `main`.
 | `day2` | Format Control — constrained vs unconstrained, JSON, stop sequences |
 | `day3` | Reasoning — river crossing puzzle solved 4 ways |
 | `day4` | Temperature — 3x3 table across APIs x temperatures |
+| `day5` | Model Versions — compare 4 YandexGPT tiers (Lite, Pro, Pro RC, Alice AI LLM): timing, tokens, cost, AI self-analysis |
 
 ## API Keys Setup
 
@@ -139,6 +140,14 @@ $response = $client->chat($prompt, ['temperature' => 0.7, 'max_tokens' => 200]);
 ```
 
 Providers: `claude` (claude-haiku-4-5), `deepseek` (deepseek-chat), `yandexgpt` (yandexgpt-lite/latest).
+
+Use `chatWithMetrics()` (YandexGPT only) to get token counts and model info alongside the response:
+
+```php
+$client = new LLMClient('yandexgpt', $apiKey, $folderId);
+$result = $client->chatWithMetrics($prompt, ['model' => 'yandexgpt/latest']);
+// $result: ['text', 'input_tokens', 'output_tokens', 'total_tokens', 'model']
+```
 
 ### Environment
 
