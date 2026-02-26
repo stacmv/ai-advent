@@ -33,9 +33,6 @@ $env = loadEnv(__DIR__ . '/../../.env');
 if (function_exists('mb_internal_encoding')) {
     mb_internal_encoding('UTF-8');
 }
-if (function_exists('stream_set_chunk_size')) {
-    stream_set_chunk_size(STDIN, 0);
-}
 
 // Check for Yandex API key
 if (empty($env['YANDEX_API_KEY'])) {
