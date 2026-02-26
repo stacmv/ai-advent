@@ -10,3 +10,6 @@ storage/
 .vscode/
 .idea/
 .claude/
+.server.pid
+.server.port
+.server.log

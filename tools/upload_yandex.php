@@ -98,10 +98,8 @@ return function (string $filePath, string $fileName, string $token): array {
         $publishData = json_decode($publishResponse->getBody(), true);
 
         if ($publishCode >= 300) {
-            echo "   Publish failed (HTTP {$publishCode}): " . ($publishData['message'] ?? '') . "\n";
-            echo "   File uploaded to: disk:{$diskPath}\n";
-            echo "   Add cloud_api:disk.read permission to your OAuth app, then re-run.\n";
-            return ['uploaded' => true, 'path' => $diskPath];
+            return ['error' => "Publish failed (HTTP {$publishCode}): "
+                . ($publishData['message'] ?? $publishResponse->getBody())];
         }
 
         // Publish returns a Link with href pointing to resource metadata
@@ -136,9 +134,7 @@ return function (string $filePath, string $fileName, string $token): array {
             return ['shareLink' => $metaData['public_url']];
         }
 
-        echo "   File uploaded but could not get public link.\n";
-        echo "   Add cloud_api:disk.read to your OAuth app permissions.\n";
-        return ['uploaded' => true, 'path' => $diskPath];
+        return ['error' => 'File uploaded but could not retrieve public link from API'];
     } catch (Exception $e) {
         return ['error' => $e->getMessage()];
     }
