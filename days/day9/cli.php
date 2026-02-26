@@ -105,6 +105,11 @@ if ($isDemo) {
         echo "You: ";
         $input = trim(fgets(STDIN));
 
+        // Ensure input is properly decoded as UTF-8
+        if (!mb_check_encoding($input, 'UTF-8')) {
+            $input = mb_convert_encoding($input, 'UTF-8');
+        }
+
         if ($input === 'exit') {
             break;
         }
