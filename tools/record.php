@@ -3,6 +3,8 @@
 require __DIR__ . '/../vendor/autoload.php';
 
 use Symfony\Component\Process\Process;
+use AiAdvent\LLMClient;
+use AiAdvent\Agent;
 
 // Load .env directly - simple parser
 function loadEnv($filePath) {
@@ -46,7 +48,6 @@ if (!$day || !ctype_digit($day) || (int)$day < 1) {
     exit(1);
 }
 
-$cliFile = __DIR__ . "/../days/day{$day}/cli.php";
 $demoCasesFile = __DIR__ . "/../days/day{$day}/demo_cases.php";
 
 if (!file_exists($demoCasesFile)) {
@@ -68,17 +69,16 @@ echo "[1/4] Measuring demo duration (dry run)...\n";
 
 $dryStart = microtime(true);
 
+$client = new LLMClient('yandexgpt', $env['YANDEX_API_KEY'] ?? '', $env['YANDEX_FOLDER_ID'] ?? '');
 foreach ($demoCases as $idx => $case) {
     $caseNum = $idx + 1;
     echo "   Running case {$caseNum}/" . count($demoCases) . "...\r";
 
-    $process = new Process(['php', $cliFile, "--case={$caseNum}"]);
-    $process->setTimeout(120);
-    $process->setEnv($env);
-    $process->run();
-
-    if (!$process->isSuccessful()) {
-        echo "\n[-] Case {$caseNum} failed: " . $process->getErrorOutput() . "\n";
+    try {
+        $agent = new Agent($client);
+        $response = $agent->run($case['prompt']);
+    } catch (Exception $e) {
+        echo "\n[-] Case {$caseNum} failed: " . $e->getMessage() . "\n";
         exit(1);
     }
 

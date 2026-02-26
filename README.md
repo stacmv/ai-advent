@@ -31,16 +31,28 @@ All operations are done via `make`. Run `make` or `make help` on any branch to s
 | `make setup` | Create `.env` from `.env.example` template |
 | `make get-token` | Get Yandex.Disk OAuth token via device authorization flow. Opens a URL, you enter a short code, token is saved automatically |
 
-### Working on a Day
+### Working on a Day (CLI days: 1–5)
 
 | Command | Description |
 |---------|-------------|
 | `make test` | Run the day's CLI interactively (prompts for input) |
 | `make demo` | Run with pre-configured demo cases (non-interactive) |
-| `make record` | Dry-run demo to measure timing, then screen-record the demo with ffmpeg (duration = measured time + 10%) |
-| `make upload` | Upload latest recorded video to Yandex.Disk, print submission message with GitHub and video links |
+| `make record` | Dry-run demo to measure timing, then screen-record the demo with ffmpeg |
+| `make upload` | Upload latest recorded video to Yandex.Disk, print submission message |
 | `make lint` | Check code style (PSR-12) |
 | `make clean` | Remove `recordings/` directory |
+
+### Working on a Day (Web UI days: 6+)
+
+| Command | Description |
+|---------|-------------|
+| `make up` / `make serve` | Start PHP dev server, auto-open browser |
+| `make down` | Stop the server |
+| `make status` | Show server status (running/stopped, port, PID) |
+| `make upload` | Upload latest recorded video to Yandex.Disk |
+| `make lint` | Check code style (PSR-12) |
+
+Demo, Record, Stop, and Upload are available as buttons in the Web UI header.
 
 ### Bootstrapping a New Day
 
@@ -98,6 +110,8 @@ Each day lives on its own branch. Shared code (LLMClient, tools) is on `main`.
 | `day2` | Format Control — constrained vs unconstrained, JSON, stop sequences |
 | `day3` | Reasoning — river crossing puzzle solved 4 ways |
 | `day4` | Temperature — 3x3 table across APIs x temperatures |
+| `day5` | Model Versions — compare 4 YandexGPT tiers (Lite, Pro, Pro RC, Alice AI LLM) |
+| `day6` | Agent Architecture — YandexGPT agent with Web UI |
 
 ## API Keys Setup
 
