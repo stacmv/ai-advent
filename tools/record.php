@@ -1,5 +1,7 @@
 <?php
 
+// phpcs:disable PSR1.Files.SideEffects
+
 require __DIR__ . '/../vendor/autoload.php';
 
 use Symfony\Component\Process\Process;
@@ -7,7 +9,8 @@ use AiAdvent\LLMClient;
 use AiAdvent\Agent;
 
 // Load .env directly - simple parser
-function loadEnv($filePath) {
+function loadEnv($filePath)
+{
     $config = [];
     if (!file_exists($filePath)) {
         return $config;
@@ -22,8 +25,10 @@ function loadEnv($filePath) {
             list($key, $value) = explode('=', $line, 2);
             $key = trim($key);
             $value = trim($value);
-            if ((substr($value, 0, 1) === '"' && substr($value, -1) === '"') ||
-                (substr($value, 0, 1) === "'" && substr($value, -1) === "'")) {
+            if (
+                (substr($value, 0, 1) === '"' && substr($value, -1) === '"') ||
+                (substr($value, 0, 1) === "'" && substr($value, -1) === "'")
+            ) {
                 $value = substr($value, 1, -1);
             }
             $config[$key] = $value;
