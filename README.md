@@ -112,6 +112,9 @@ Each day lives on its own branch. Shared code (LLMClient, tools) is on `main`.
 | `day4` | Temperature — 3x3 table across APIs x temperatures |
 | `day5` | Model Versions — compare 4 YandexGPT tiers (Lite, Pro, Pro RC, Alice AI LLM) |
 | `day6` | Agent Architecture — YandexGPT agent with Web UI |
+| `day7` | Persistent History — multi-turn conversation saved across sessions |
+| `day8` | Token Counting — per-turn and cumulative usage with limit warnings |
+| `day9` | Context Compression — auto-summarize old context to stay within limits |
 
 ## API Keys Setup
 
