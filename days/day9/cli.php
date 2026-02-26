@@ -3,6 +3,7 @@
 require __DIR__ . '/../../vendor/autoload.php';
 
 use AiAdvent\LLMClient;
+use AiAdvent\Agent;
 
 // Load .env directly
 function loadEnv($filePath) {
@@ -28,60 +29,111 @@ function loadEnv($filePath) {
 
 $env = loadEnv(__DIR__ . '/../../.env');
 
+// Check for Yandex API key
+if (empty($env['YANDEX_API_KEY'])) {
+    echo "Error: YANDEX_API_KEY not found in .env\n";
+    exit(1);
+}
+if (empty($env['YANDEX_FOLDER_ID'])) {
+    echo "Error: YANDEX_FOLDER_ID not found in .env\n";
+    exit(1);
+}
+
+$historyFile = __DIR__ . '/../../storage/history_day9.json';
 $caseNum = $argv[1] ?? null;
+$isDemo = ($caseNum === '--case=1' || $caseNum === '1' || $caseNum === '--all');
 
-if ($caseNum === '--case=1' || $caseNum === '1') {
+if ($isDemo) {
     require __DIR__ . '/demo_cases.php';
-    $case = $demoCases[0] ?? null;
-    if (!$case) {
-        echo "No demo case found\n";
-        exit(1);
+    // Run each demo case
+    foreach ($demoCases as $index => $case) {
+        echo "=== Demo Case " . ($index + 1) . ": " . $case['name'] . " ===\n";
+        echo "Compression: " . ($case['enable_compression'] ? 'ENABLED' : 'DISABLED') . "\n\n";
+
+        // Create a unique history file for each case
+        $sessionHistoryFile = __DIR__ . '/../../storage/history_day9_case' . ($index + 1) . '.json';
+
+        try {
+            $client = new LLMClient('yandexgpt', $env['YANDEX_API_KEY'], $env['YANDEX_FOLDER_ID']);
+            $agent = new Agent($client, $sessionHistoryFile, $case['options']);
+
+            // Run all turns
+            foreach ($case['turns'] as $turnNum => $prompt) {
+                echo "Turn " . ($turnNum + 1) . " - You: " . substr($prompt, 0, 50) . (strlen($prompt) > 50 ? '...' : '') . "\n";
+                $result = $agent->run($prompt);
+
+                if ($result['was_compressed']) {
+                    echo "[COMPRESSED: conversation summary created]\n";
+                }
+
+                echo "Agent: " . substr($result['text'], 0, 80) . "...\n";
+                echo "  Tokens this turn: " . $result['turn_total_tokens'] . "  |  Cumulative: " . $result['total_tokens'] . "\n";
+
+                if (!$case['enable_compression']) {
+                    $storedMessages = count($agent->getMessages());
+                    echo "  (Without compression, would need to send " . $storedMessages . " messages)\n";
+                } else {
+                    $storedMessages = count($agent->getMessages());
+                    echo "  (Storing " . $storedMessages . " recent messages, older context in summary)\n";
+                }
+                echo "\n";
+            }
+
+            echo str_repeat("=", 80) . "\n\n";
+        } catch (Exception $e) {
+            echo "Error: " . $e->getMessage() . "\n\n";
+        }
     }
-    $prompt = $case['prompt'];
 } else {
-    echo "Enter prompt: ";
-    $prompt = trim(fgets(STDIN));
-    if (empty($prompt)) {
-        echo "No prompt provided\n";
-        exit(1);
+    // Interactive mode
+    echo "=== Day 9: Context Compression with Summary ===\n";
+    echo "Commands: 'exit' to quit, 'summary' to show compressed context, 'clear' to reset\n";
+    echo str_repeat("=", 80) . "\n\n";
+
+    $client = new LLMClient('yandexgpt', $env['YANDEX_API_KEY'], $env['YANDEX_FOLDER_ID']);
+    $agent = new Agent($client, $historyFile);
+
+    while (true) {
+        echo "You: ";
+        $input = trim(fgets(STDIN));
+
+        if ($input === 'exit') {
+            break;
+        }
+        if ($input === 'summary') {
+            $summary = $agent->getSummary();
+            if ($summary) {
+                echo "\n[Compressed Context Summary]\n";
+                echo $summary . "\n\n";
+            } else {
+                echo "[No compression yet - full history is being used]\n\n";
+            }
+            continue;
+        }
+        if ($input === 'clear') {
+            $agent->clearHistory();
+            echo "[History cleared]\n\n";
+            continue;
+        }
+
+        if ($input === '') {
+            continue;
+        }
+
+        try {
+            echo "\nAgent: ";
+            $result = $agent->run($input);
+
+            if ($result['was_compressed']) {
+                echo "\n[Context compressed to summary]\n";
+            }
+
+            echo $result['text'] . "\n";
+            echo "[Tokens this turn: " . $result['turn_total_tokens'] . "  |  Cumulative: " . $result['total_tokens'] . "]\n\n";
+        } catch (Exception $e) {
+            echo "Error: " . $e->getMessage() . "\n\n";
+        }
     }
+
+    echo "\nGoodbye!\n";
 }
-
-echo "=== Day 9: Context Compression with Summary ===\n";
-echo "Prompt: $prompt\n";
-echo str_repeat("=", 80) . "\n\n";
-
-// Available APIs
-$providers = [];
-if (!empty($env['ANTHROPIC_API_KEY'])) {
-    $providers['claude'] = $env['ANTHROPIC_API_KEY'];
-}
-if (!empty($env['DEEPSEEK_API_KEY'])) {
-    $providers['deepseek'] = $env['DEEPSEEK_API_KEY'];
-}
-if (!empty($env['YANDEX_API_KEY'])) {
-    $providers['yandexgpt'] = $env['YANDEX_API_KEY'];
-}
-
-foreach ($providers as $provider => $apiKey) {
-    echo "[{$provider}] Calling API...\n";
-    $start = microtime(true);
-
-    try {
-        $client = new LLMClient(
-            $provider,
-            $apiKey,
-            $provider === 'yandexgpt' ? ($env['YANDEX_FOLDER_ID'] ?? '') : null
-        );
-        $response = $client->chat($prompt);
-        $elapsed = round(microtime(true) - $start, 2);
-
-        echo "[{$provider}] ({$elapsed}s):\n";
-        echo $response . "\n\n";
-    } catch (Exception $e) {
-        echo "[{$provider}] Error: " . $e->getMessage() . "\n\n";
-    }
-}
-
-echo str_repeat("=", 80) . "\n";
-echo "Done.\n";

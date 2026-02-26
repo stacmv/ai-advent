@@ -13,6 +13,8 @@ class Agent
     private int $totalInputTokens = 0;
     private int $totalOutputTokens = 0;
     private int $warnThreshold = 4000;
+    private int $maxRecentMessages = 6;
+    private ?string $summary = null;
 
     public function __construct(LLMClient $client, string $historyFile, array $options = [])
     {
@@ -23,7 +25,7 @@ class Agent
     }
 
     /**
-     * Run an agent interaction with conversation history, with token tracking
+     * Run an agent interaction with conversation history, with token tracking and compression
      * Returns array with 'text' and token metrics
      */
     public function run(string $userMessage)
@@ -31,10 +33,20 @@ class Agent
         // Add user message to history
         $this->messages[] = ['role' => 'user', 'text' => $userMessage];
 
-        // Get response from LLM with full conversation history
-        $response = $this->client->chatHistoryWithMetrics($this->messages, $this->options);
+        // Check if compression is needed
+        $wasCompressed = false;
+        if ($this->shouldCompress()) {
+            $this->compress();
+            $wasCompressed = true;
+        }
 
-        // Add assistant response to history
+        // Build context messages (includes summary if available)
+        $contextMessages = $this->buildContextMessages();
+
+        // Get response from LLM with conversation context
+        $response = $this->client->chatHistoryWithMetrics($contextMessages, $this->options);
+
+        // Add assistant response to stored messages
         $this->messages[] = ['role' => 'assistant', 'text' => $response['text']];
 
         // Track tokens
@@ -55,6 +67,7 @@ class Agent
             'total_input_tokens' => $this->totalInputTokens,
             'total_output_tokens' => $this->totalOutputTokens,
             'total_tokens' => $this->totalInputTokens + $this->totalOutputTokens,
+            'was_compressed' => $wasCompressed,
         ];
     }
 
@@ -117,23 +130,109 @@ class Agent
     }
 
     /**
+     * Check if compression is enabled
+     */
+    public function hasCompressionEnabled(): bool
+    {
+        return $this->maxRecentMessages < 999;
+    }
+
+    /**
+     * Get the summary (if any)
+     */
+    public function getSummary(): ?string
+    {
+        return $this->summary;
+    }
+
+    /**
+     * Check if compression should be triggered
+     */
+    private function shouldCompress(): bool
+    {
+        return count($this->messages) > ($this->maxRecentMessages * 2);
+    }
+
+    /**
+     * Compress earlier messages into a summary
+     */
+    private function compress(): void
+    {
+        // Number of messages to keep (3 user+assistant pairs = 6 messages)
+        $keepCount = $this->maxRecentMessages;
+        $compressCount = count($this->messages) - $keepCount;
+
+        if ($compressCount <= 0) {
+            return;
+        }
+
+        // Get messages to compress
+        $toCompress = array_slice($this->messages, 0, $compressCount);
+
+        // Create summarization prompt
+        $conversationText = '';
+        foreach ($toCompress as $msg) {
+            $conversationText .= "[{$msg['role']}] {$msg['text']}\n";
+        }
+
+        $summarizePrompt = "Please provide a brief summary of the following conversation:\n\n" . $conversationText
+            . "\n\nProvide a concise summary (2-3 sentences) capturing the key points discussed.";
+
+        // Get summary from LLM
+        $summaryResponse = $this->client->chatWithMetrics($summarizePrompt, $this->options);
+        $this->summary = $summaryResponse['text'];
+
+        // Keep only recent messages
+        $this->messages = array_slice($this->messages, $compressCount);
+    }
+
+    /**
+     * Build context messages including summary
+     */
+    private function buildContextMessages(): array
+    {
+        $context = [];
+
+        // Add summary as system message if available
+        if ($this->summary !== null) {
+            $context[] = [
+                'role' => 'system',
+                'text' => "Previous conversation summary: {$this->summary}"
+            ];
+        }
+
+        // Add recent messages
+        $context = array_merge($context, $this->messages);
+
+        return $context;
+    }
+
+    /**
      * Load history from file
      */
     private function loadHistory(): void
     {
         if (!file_exists($this->historyFile)) {
             $this->messages = [];
+            $this->summary = null;
             return;
         }
 
         $content = file_get_contents($this->historyFile);
         if ($content === false) {
             $this->messages = [];
+            $this->summary = null;
             return;
         }
 
         $data = json_decode($content, true);
-        $this->messages = is_array($data) ? $data : [];
+        if (is_array($data)) {
+            $this->messages = $data['messages'] ?? [];
+            $this->summary = $data['summary'] ?? null;
+        } else {
+            $this->messages = [];
+            $this->summary = null;
+        }
     }
 
     /**
@@ -146,9 +245,14 @@ class Agent
             mkdir($dir, 0755, true);
         }
 
+        $data = [
+            'messages' => $this->messages,
+            'summary' => $this->summary,
+        ];
+
         file_put_contents(
             $this->historyFile,
-            json_encode($this->messages, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)
+            json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)
         );
     }
 }
