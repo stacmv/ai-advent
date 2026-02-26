@@ -4,6 +4,7 @@ require __DIR__ . '/../../vendor/autoload.php';
 
 use AiAdvent\LLMClient;
 use AiAdvent\Agent;
+use AiAdvent\TerminalIO;
 
 // Load .env directly
 function loadEnv($filePath) {
@@ -29,10 +30,8 @@ function loadEnv($filePath) {
 
 $env = loadEnv(__DIR__ . '/../../.env');
 
-// Ensure UTF-8 encoding for stdin/stdout
-if (function_exists('mb_internal_encoding')) {
-    mb_internal_encoding('UTF-8');
-}
+// Initialize terminal for UTF-8 handling
+TerminalIO::initializeUTF8();
 
 // Check for Yandex API key
 if (empty($env['YANDEX_API_KEY'])) {
@@ -83,22 +82,7 @@ if ($isDemo) {
     $agent = new Agent($client);
 
     while (true) {
-        echo "You: ";
-        $input = trim(fgets(STDIN));
-
-        // Ensure input is properly decoded as UTF-8
-        // On Windows, stdin may come in Windows-1251 (Cyrillic) or Windows-1252 (Latin)
-        if (!mb_check_encoding($input, 'UTF-8')) {
-            // Try common Windows encodings
-            if (mb_check_encoding($input, 'Windows-1251')) {
-                $input = iconv('Windows-1251', 'UTF-8', $input);
-            } elseif (mb_check_encoding($input, 'Windows-1252')) {
-                $input = iconv('Windows-1252', 'UTF-8', $input);
-            } else {
-                // Fallback: attempt generic conversion
-                $input = mb_convert_encoding($input, 'UTF-8');
-            }
-        }
+        $input = TerminalIO::readLine("You: ");
 
         if ($input === 'exit' || $input === '') {
             break;
