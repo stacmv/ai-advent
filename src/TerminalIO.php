@@ -35,16 +35,31 @@ class TerminalIO
             return $input;
         }
 
-        // Try common Windows encodings in order of likelihood
-        if (mb_check_encoding($input, 'Windows-1251')) {
-            return iconv('Windows-1251', 'UTF-8//IGNORE', $input);
+        // Auto-detect encoding from the input
+        $detected = mb_detect_encoding(
+            $input,
+            ['Windows-1251', 'Windows-1252', 'UTF-8', 'ASCII'],
+            true
+        );
+
+        if ($detected && $detected !== 'UTF-8') {
+            // Convert from detected encoding to UTF-8
+            $converted = @iconv($detected, 'UTF-8//TRANSLIT', $input);
+            if ($converted !== false) {
+                return $converted;
+            }
         }
 
-        if (mb_check_encoding($input, 'Windows-1252')) {
-            return iconv('Windows-1252', 'UTF-8//IGNORE', $input);
+        // Fallback: try common Windows encodings
+        $encodings = ['Windows-1251', 'Windows-1252', 'ISO-8859-1'];
+        foreach ($encodings as $encoding) {
+            $converted = @iconv($encoding, 'UTF-8//TRANSLIT', $input);
+            if ($converted !== false) {
+                return $converted;
+            }
         }
 
-        // Fallback: attempt generic conversion
+        // Last resort: attempt generic conversion
         return mb_convert_encoding($input, 'UTF-8');
     }
 
