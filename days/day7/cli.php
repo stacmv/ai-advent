@@ -3,6 +3,7 @@
 require __DIR__ . '/../../vendor/autoload.php';
 
 use AiAdvent\LLMClient;
+use AiAdvent\Agent;
 
 // Load .env directly
 function loadEnv($filePath) {
@@ -28,60 +29,99 @@ function loadEnv($filePath) {
 
 $env = loadEnv(__DIR__ . '/../../.env');
 
+// Check for Yandex API key
+if (empty($env['YANDEX_API_KEY'])) {
+    echo "Error: YANDEX_API_KEY not found in .env\n";
+    exit(1);
+}
+if (empty($env['YANDEX_FOLDER_ID'])) {
+    echo "Error: YANDEX_FOLDER_ID not found in .env\n";
+    exit(1);
+}
+
+$historyFile = __DIR__ . '/../../storage/history_day7.json';
 $caseNum = $argv[1] ?? null;
+$isDemo = ($caseNum === '--case=1' || $caseNum === '1' || $caseNum === '--all');
 
-if ($caseNum === '--case=1' || $caseNum === '1') {
+if ($isDemo) {
     require __DIR__ . '/demo_cases.php';
-    $case = $demoCases[0] ?? null;
-    if (!$case) {
-        echo "No demo case found\n";
-        exit(1);
+    // Run each demo case as a separate session (to show history persistence)
+    foreach ($demoCases as $index => $case) {
+        echo "=== Demo Session " . ($index + 1) . " ===\n";
+
+        // Create a unique history file for each demo case
+        $sessionHistoryFile = __DIR__ . '/../../storage/history_day7_case' . ($index + 1) . '.json';
+
+        try {
+            $client = new LLMClient('yandexgpt', $env['YANDEX_API_KEY'], $env['YANDEX_FOLDER_ID']);
+            $agent = new Agent($client, $sessionHistoryFile);
+
+            echo "[History loaded: " . $agent->getMessageCount() . " messages]\n";
+            echo "---\n";
+
+            // Run all prompts in the case
+            foreach ($case['turns'] as $turnNum => $prompt) {
+                echo "Turn " . ($turnNum + 1) . " - You: " . $prompt . "\n";
+                $response = $agent->run($prompt);
+                echo "Agent: " . $response . "\n";
+                echo "---\n";
+            }
+
+            echo "[Session saved: " . $agent->getMessageCount() . " total messages]\n\n";
+        } catch (Exception $e) {
+            echo "Error: " . $e->getMessage() . "\n\n";
+        }
     }
-    $prompt = $case['prompt'];
 } else {
-    echo "Enter prompt: ";
-    $prompt = trim(fgets(STDIN));
-    if (empty($prompt)) {
-        echo "No prompt provided\n";
-        exit(1);
+    // Interactive mode
+    echo "=== Day 7: Agent with Persistent Conversation History ===\n";
+    echo "[History loaded: messages from storage/history_day7.json]\n";
+    echo "Commands: 'exit' to quit, 'clear' to reset history, 'history' to show all messages\n";
+    echo str_repeat("=", 80) . "\n\n";
+
+    $client = new LLMClient('yandexgpt', $env['YANDEX_API_KEY'], $env['YANDEX_FOLDER_ID']);
+    $agent = new Agent($client, $historyFile);
+
+    echo "[Loaded " . $agent->getMessageCount() . " messages from history]\n\n";
+
+    while (true) {
+        echo "You: ";
+        $input = trim(fgets(STDIN));
+
+        if ($input === 'exit') {
+            break;
+        }
+        if ($input === 'clear') {
+            $agent->clearHistory();
+            echo "[History cleared]\n\n";
+            continue;
+        }
+        if ($input === 'history') {
+            $messages = $agent->getMessages();
+            if (empty($messages)) {
+                echo "[No messages in history]\n\n";
+            } else {
+                foreach ($messages as $msg) {
+                    echo "[{$msg['role']}] {$msg['text']}\n";
+                }
+                echo "[Total: " . count($messages) . " messages]\n\n";
+            }
+            continue;
+        }
+
+        if ($input === '') {
+            continue;
+        }
+
+        try {
+            echo "\nAgent: ";
+            $response = $agent->run($input);
+            echo $response . "\n";
+            echo "[Total history: " . $agent->getMessageCount() . " messages]\n\n";
+        } catch (Exception $e) {
+            echo "Error: " . $e->getMessage() . "\n\n";
+        }
     }
+
+    echo "\nGoodbye! (" . $agent->getMessageCount() . " messages saved to history)\n";
 }
-
-echo "=== Day 7: Agent with Persistent Conversation History ===\n";
-echo "Prompt: $prompt\n";
-echo str_repeat("=", 80) . "\n\n";
-
-// Available APIs
-$providers = [];
-if (!empty($env['ANTHROPIC_API_KEY'])) {
-    $providers['claude'] = $env['ANTHROPIC_API_KEY'];
-}
-if (!empty($env['DEEPSEEK_API_KEY'])) {
-    $providers['deepseek'] = $env['DEEPSEEK_API_KEY'];
-}
-if (!empty($env['YANDEX_API_KEY'])) {
-    $providers['yandexgpt'] = $env['YANDEX_API_KEY'];
-}
-
-foreach ($providers as $provider => $apiKey) {
-    echo "[{$provider}] Calling API...\n";
-    $start = microtime(true);
-
-    try {
-        $client = new LLMClient(
-            $provider,
-            $apiKey,
-            $provider === 'yandexgpt' ? ($env['YANDEX_FOLDER_ID'] ?? '') : null
-        );
-        $response = $client->chat($prompt);
-        $elapsed = round(microtime(true) - $start, 2);
-
-        echo "[{$provider}] ({$elapsed}s):\n";
-        echo $response . "\n\n";
-    } catch (Exception $e) {
-        echo "[{$provider}] Error: " . $e->getMessage() . "\n\n";
-    }
-}
-
-echo str_repeat("=", 80) . "\n";
-echo "Done.\n";
