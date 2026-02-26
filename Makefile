@@ -1,8 +1,8 @@
-.PHONY: help install lint test test-debug demo record upload clean setup get-token next-day serve up down status
+.PHONY: help install lint upload clean setup get-token next-day serve up down status
 
 help:
 	@echo ""
-	@echo "*** AI ADVENT - DAY 6: AGENT ARCHITECTURE - BASIC AGENT ***"
+	@echo "*** AI ADVENT - DAY 7: PERSISTENT CONVERSATION HISTORY ***"
 	@echo "=========================================="
 	@echo ""
 	@echo "[*] Available commands:"
@@ -15,20 +15,17 @@ help:
 	@echo "  Code Quality:"
 	@echo "    make lint             Check code style (PSR-12)"
 	@echo ""
-	@echo "  Running (Web UI – primary):"
+	@echo "  Running (Web UI):"
 	@echo "    make up               Start web UI (auto-finds free port, opens browser)"
 	@echo "    make down             Stop web UI"
 	@echo "    make status           Show server status"
 	@echo "    make serve            Alias for 'make up'"
 	@echo ""
-	@echo "  Legacy CLI (deprecated):"
-	@echo "    make demo             Run Day 6 demo (CLI)"
-	@echo "    make test             Run Day 6 interactively (CLI)"
-	@echo "    make record           Start screen recording and run demo (CLI)"
-	@echo "    make upload           Upload latest video (CLI)"
+	@echo "  Recording & Upload:"
+	@echo "    make upload           Upload latest video for this day"
 	@echo ""
 	@echo "  Bootstrap:"
-	@echo "    make next-day N=6     Bootstrap next day branch"
+	@echo "    make next-day N=8     Bootstrap next day branch"
 	@echo ""
 	@echo "  Utilities:"
 	@echo "    make clean            Remove recordings directory"
@@ -52,17 +49,13 @@ get-token:
 lint:
 	composer run lint
 
-test:
-	@echo "Running Day 6 CLI (interactive mode)..."
-	php days/day6/cli.php
-
 serve: up
 
 up:
 	@if [ -f .server.pid ] && kill -0 $$(cat .server.pid) 2>/dev/null; then \
 		echo "✓ Server already running on http://localhost:$$(cat .server.port) (PID: $$(cat .server.pid))"; \
 	else \
-		echo "Starting Day 6 web server..."; \
+		echo "Starting Day 7 web client at http://localhost:... "; \
 		php tools/serve.php > .server.log 2>&1 & echo $$! > .server.pid; \
 		sleep 2; \
 		if [ -f .server.pid ] && kill -0 $$(cat .server.pid) 2>/dev/null; then \
@@ -94,21 +87,9 @@ status:
 		rm -f .server.pid .server.port; \
 	fi
 
-test-debug:
-	@echo "Running Day 6 CLI (debug mode)..."
-	php days/day6/cli.php --debug
-
-demo:
-	@echo "Running Day 6 demo..."
-	php days/day6/cli.php --case=1
-
-record:
-	@echo "Starting screen recording for Day 6 demo..."
-	php tools/record.php --day=6
-
 upload:
-	@echo "Uploading latest Day 6 video..."
-	php tools/upload_latest.php 6
+	@echo "Uploading latest Day 7 video..."
+	php tools/upload_latest.php 7
 
 next-day:
 	@if [ -z "$(N)" ]; then echo "Usage: make next-day N=<day_number> [T=\"Title\"]"; exit 1; fi
