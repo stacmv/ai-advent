@@ -2,6 +2,7 @@
 vendor/
 composer.lock
 recordings/
+storage/
 .DS_Store
 *.swp
 *.swo

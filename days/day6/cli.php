@@ -3,6 +3,7 @@
 require __DIR__ . '/../../vendor/autoload.php';
 
 use AiAdvent\LLMClient;
+use AiAdvent\Agent;
 
 // Load .env directly
 function loadEnv($filePath) {
@@ -28,60 +29,62 @@ function loadEnv($filePath) {
 
 $env = loadEnv(__DIR__ . '/../../.env');
 
+// Check for Yandex API key
+if (empty($env['YANDEX_API_KEY'])) {
+    echo "Error: YANDEX_API_KEY not found in .env\n";
+    exit(1);
+}
+if (empty($env['YANDEX_FOLDER_ID'])) {
+    echo "Error: YANDEX_FOLDER_ID not found in .env\n";
+    exit(1);
+}
+
 $caseNum = $argv[1] ?? null;
+$isDemo = ($caseNum === '--case=1' || $caseNum === '1' || $caseNum === '--all');
 
-if ($caseNum === '--case=1' || $caseNum === '1') {
+if ($isDemo) {
     require __DIR__ . '/demo_cases.php';
-    $case = $demoCases[0] ?? null;
-    if (!$case) {
-        echo "No demo case found\n";
-        exit(1);
+    // Run all demo cases
+    foreach ($demoCases as $index => $case) {
+        echo "=== Case " . ($index + 1) . " ===\n";
+        echo "Prompt: " . $case['prompt'] . "\n";
+        echo str_repeat("-", 80) . "\n";
+
+        try {
+            $client = new LLMClient('yandexgpt', $env['YANDEX_API_KEY'], $env['YANDEX_FOLDER_ID']);
+            $agent = new Agent($client);
+            $response = $agent->run($case['prompt']);
+
+            echo $response . "\n\n";
+        } catch (Exception $e) {
+            echo "Error: " . $e->getMessage() . "\n\n";
+        }
     }
-    $prompt = $case['prompt'];
 } else {
-    echo "Enter prompt: ";
-    $prompt = trim(fgets(STDIN));
-    if (empty($prompt)) {
-        echo "No prompt provided\n";
-        exit(1);
+    // Interactive mode
+    echo "=== Day 6: Agent Architecture - Basic Agent ===\n";
+    echo "Commands: 'exit' to quit\n";
+    echo str_repeat("=", 80) . "\n\n";
+
+    $client = new LLMClient('yandexgpt', $env['YANDEX_API_KEY'], $env['YANDEX_FOLDER_ID']);
+    $agent = new Agent($client);
+
+    while (true) {
+        echo "You: ";
+        $input = trim(fgets(STDIN));
+
+        if ($input === 'exit' || $input === '') {
+            break;
+        }
+
+        try {
+            echo "\nAgent: ";
+            $response = $agent->run($input);
+            echo $response . "\n\n";
+        } catch (Exception $e) {
+            echo "Error: " . $e->getMessage() . "\n\n";
+        }
     }
+
+    echo "\nGoodbye!\n";
 }
-
-echo "=== Day 6: Agent Architecture - Basic Agent ===\n";
-echo "Prompt: $prompt\n";
-echo str_repeat("=", 80) . "\n\n";
-
-// Available APIs
-$providers = [];
-if (!empty($env['ANTHROPIC_API_KEY'])) {
-    $providers['claude'] = $env['ANTHROPIC_API_KEY'];
-}
-if (!empty($env['DEEPSEEK_API_KEY'])) {
-    $providers['deepseek'] = $env['DEEPSEEK_API_KEY'];
-}
-if (!empty($env['YANDEX_API_KEY'])) {
-    $providers['yandexgpt'] = $env['YANDEX_API_KEY'];
-}
-
-foreach ($providers as $provider => $apiKey) {
-    echo "[{$provider}] Calling API...\n";
-    $start = microtime(true);
-
-    try {
-        $client = new LLMClient(
-            $provider,
-            $apiKey,
-            $provider === 'yandexgpt' ? ($env['YANDEX_FOLDER_ID'] ?? '') : null
-        );
-        $response = $client->chat($prompt);
-        $elapsed = round(microtime(true) - $start, 2);
-
-        echo "[{$provider}] ({$elapsed}s):\n";
-        echo $response . "\n\n";
-    } catch (Exception $e) {
-        echo "[{$provider}] Error: " . $e->getMessage() . "\n\n";
-    }
-}
-
-echo str_repeat("=", 80) . "\n";
-echo "Done.\n";
