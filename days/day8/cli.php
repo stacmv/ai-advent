@@ -4,6 +4,7 @@ require __DIR__ . '/../../vendor/autoload.php';
 
 use AiAdvent\LLMClient;
 use AiAdvent\Agent;
+use AiAdvent\TerminalIO;
 
 // Load .env directly
 function loadEnv($filePath) {
@@ -44,6 +45,9 @@ function displayTokenStats(array $result): void {
 }
 
 $env = loadEnv(__DIR__ . '/../../.env');
+
+// Initialize terminal for UTF-8 handling
+TerminalIO::initializeUTF8();
 
 // Check for Yandex API key
 if (empty($env['YANDEX_API_KEY'])) {
@@ -109,13 +113,7 @@ if ($isDemo) {
     $agent = new Agent($client, $historyFile);
 
     while (true) {
-        echo "You: ";
-        $input = trim(fgets(STDIN));
-
-        // Ensure input is properly decoded as UTF-8
-        if (!mb_check_encoding($input, 'UTF-8')) {
-            $input = mb_convert_encoding($input, 'UTF-8');
-        }
+        $input = TerminalIO::readLine("You: ");
 
         if ($input === 'exit') {
             break;
