@@ -8,6 +8,11 @@ class Agent
     private array $messages = [];
     private string $historyFile;
     private array $options;
+    private int $turnInputTokens = 0;
+    private int $turnOutputTokens = 0;
+    private int $totalInputTokens = 0;
+    private int $totalOutputTokens = 0;
+    private int $warnThreshold = 4000;
 
     public function __construct(LLMClient $client, string $historyFile, array $options = [])
     {
@@ -18,9 +23,10 @@ class Agent
     }
 
     /**
-     * Run an agent interaction with conversation history
+     * Run an agent interaction with conversation history, with token tracking
+     * Returns array with 'text' and token metrics
      */
-    public function run(string $userMessage): string
+    public function run(string $userMessage)
     {
         // Add user message to history
         $this->messages[] = ['role' => 'user', 'text' => $userMessage];
@@ -31,10 +37,25 @@ class Agent
         // Add assistant response to history
         $this->messages[] = ['role' => 'assistant', 'text' => $response['text']];
 
+        // Track tokens
+        $this->turnInputTokens = $response['input_tokens'];
+        $this->turnOutputTokens = $response['output_tokens'];
+        $this->totalInputTokens += $this->turnInputTokens;
+        $this->totalOutputTokens += $this->turnOutputTokens;
+
         // Save history to disk
         $this->saveHistory();
 
-        return $response['text'];
+        // Return result as array (for token display) or string (for backward compat)
+        return [
+            'text' => $response['text'],
+            'turn_input_tokens' => $this->turnInputTokens,
+            'turn_output_tokens' => $this->turnOutputTokens,
+            'turn_total_tokens' => $this->turnInputTokens + $this->turnOutputTokens,
+            'total_input_tokens' => $this->totalInputTokens,
+            'total_output_tokens' => $this->totalOutputTokens,
+            'total_tokens' => $this->totalInputTokens + $this->totalOutputTokens,
+        ];
     }
 
     /**
@@ -60,6 +81,39 @@ class Agent
     public function getMessages(): array
     {
         return $this->messages;
+    }
+
+    /**
+     * Get token statistics
+     */
+    public function getStats(): array
+    {
+        return [
+            'turn_input' => $this->turnInputTokens,
+            'turn_output' => $this->turnOutputTokens,
+            'total_input' => $this->totalInputTokens,
+            'total_output' => $this->totalOutputTokens,
+            'total' => $this->totalInputTokens + $this->totalOutputTokens,
+        ];
+    }
+
+    /**
+     * Check if approaching token limit
+     */
+    public function isApproachingLimit(): bool
+    {
+        return ($this->totalInputTokens + $this->totalOutputTokens) >= ($this->warnThreshold * 0.8);
+    }
+
+    /**
+     * Get percentage of token limit used
+     */
+    public function getTokenPercentage(): int
+    {
+        if ($this->warnThreshold <= 0) {
+            return 0;
+        }
+        return (int)(100 * ($this->totalInputTokens + $this->totalOutputTokens) / $this->warnThreshold);
     }
 
     /**
