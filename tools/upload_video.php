@@ -1,24 +1,33 @@
 <?php
 
+// phpcs:disable PSR1.Files.SideEffects
+
 require __DIR__ . '/../vendor/autoload.php';
 
 use Symfony\Component\Process\Process;
 
 // Load .env directly
-function loadEnv($filePath) {
+function loadEnv($filePath)
+{
     $config = [];
     if (!file_exists($filePath)) {
         return $config;
     }
     $lines = file($filePath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
     foreach ($lines as $line) {
-        if (strpos(trim($line), '#') === 0) continue;
-        if (strpos($line, '=') === false) continue;
+        if (strpos(trim($line), '#') === 0) {
+            continue;
+        }
+        if (strpos($line, '=') === false) {
+            continue;
+        }
         list($key, $value) = explode('=', $line, 2);
         $key = trim($key);
         $value = trim($value);
-        if ((substr($value, 0, 1) === '"' && substr($value, -1) === '"') ||
-            (substr($value, 0, 1) === "'" && substr($value, -1) === "'")) {
+        if (
+            (substr($value, 0, 1) === '"' && substr($value, -1) === '"') ||
+            (substr($value, 0, 1) === "'" && substr($value, -1) === "'")
+        ) {
             $value = substr($value, 1, -1);
         }
         $config[$key] = $value;
@@ -142,7 +151,8 @@ if (isset($uploadResult['shareLink'])) {
 
 echo "[+] Done!\n";
 
-function formatBytes($bytes) {
+function formatBytes($bytes)
+{
     $units = ['B', 'KB', 'MB', 'GB'];
     $bytes = max($bytes, 0);
     $pow = floor(($bytes ? log($bytes) : 0) / log(1024));

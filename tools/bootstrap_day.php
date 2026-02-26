@@ -222,7 +222,8 @@ $makefile .= "\nupload:\n";
 $makefile .= "\t@echo \"Uploading latest Day {$day} video...\"\n";
 $makefile .= "\tphp tools/upload_latest.php {$day}\n";
 $makefile .= "\nnext-day:\n";
-$makefile .= "\t@if [ -z \"\$(N)\" ]; then echo \"Usage: make next-day N=<day_number> [T=\\\"Title\\\"]\"; exit 1; fi\n";
+$nextDayUsage = "Usage: make next-day N=<day_number> [T=\\\"Title\\\"]";
+$makefile .= "\t@if [ -z \"\$(N)\" ]; then echo \"{$nextDayUsage}\"; exit 1; fi\n";
 $makefile .= "\tphp tools/bootstrap_day.php \$(N) \"\$(T)\"\n";
 $makefile .= "\nclean:\n\trm -rf recordings/\n\t@echo \"[+] Cleaned recordings directory\"\n";
 
