@@ -57,7 +57,15 @@ if (empty($env['YANDEX_FOLDER_ID'])) {
 
 $historyFile = __DIR__ . '/../../storage/history_day8.json';
 $caseNum = $argv[1] ?? null;
-$isDemo = ($caseNum === '--case=1' || $caseNum === '1' || $caseNum === '--all');
+$isDemo = false;
+
+// Parse case number from --case=N format
+if (strpos($caseNum, '--case=') === 0) {
+    $caseNum = (int)str_replace('--case=', '', $caseNum);
+    $isDemo = true;
+} elseif ($caseNum === '--all') {
+    $isDemo = true;
+}
 
 if ($isDemo) {
     require __DIR__ . '/demo_cases.php';
