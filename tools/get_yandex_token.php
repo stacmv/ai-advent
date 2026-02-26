@@ -1,5 +1,7 @@
 <?php
 
+// phpcs:disable PSR1.Files.SideEffects
+
 /**
  * Get Yandex.Disk OAuth Token via Device Authorization Flow
  *
@@ -15,20 +17,27 @@
 require __DIR__ . '/../vendor/autoload.php';
 
 // Load .env
-function loadEnv($filePath) {
+function loadEnv($filePath)
+{
     $config = [];
     if (!file_exists($filePath)) {
         return $config;
     }
     $lines = file($filePath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
     foreach ($lines as $line) {
-        if (strpos(trim($line), '#') === 0) continue;
-        if (strpos($line, '=') === false) continue;
+        if (strpos(trim($line), '#') === 0) {
+            continue;
+        }
+        if (strpos($line, '=') === false) {
+            continue;
+        }
         list($key, $value) = explode('=', $line, 2);
         $key = trim($key);
         $value = trim($value);
-        if ((substr($value, 0, 1) === '"' && substr($value, -1) === '"') ||
-            (substr($value, 0, 1) === "'" && substr($value, -1) === "'")) {
+        if (
+            (substr($value, 0, 1) === '"' && substr($value, -1) === '"') ||
+            (substr($value, 0, 1) === "'" && substr($value, -1) === "'")
+        ) {
             $value = substr($value, 1, -1);
         }
         $config[$key] = $value;
@@ -174,7 +183,8 @@ try {
 saveToken($token);
 exit(0);
 
-function saveToken($token) {
+function saveToken($token)
+{
     $envFile = __DIR__ . '/../.env';
 
     $lines = file($envFile, FILE_IGNORE_NEW_LINES);
