@@ -87,8 +87,17 @@ if ($isDemo) {
         $input = trim(fgets(STDIN));
 
         // Ensure input is properly decoded as UTF-8
+        // On Windows, stdin may come in Windows-1251 (Cyrillic) or Windows-1252 (Latin)
         if (!mb_check_encoding($input, 'UTF-8')) {
-            $input = mb_convert_encoding($input, 'UTF-8');
+            // Try common Windows encodings
+            if (mb_check_encoding($input, 'Windows-1251')) {
+                $input = iconv('Windows-1251', 'UTF-8', $input);
+            } elseif (mb_check_encoding($input, 'Windows-1252')) {
+                $input = iconv('Windows-1252', 'UTF-8', $input);
+            } else {
+                // Fallback: attempt generic conversion
+                $input = mb_convert_encoding($input, 'UTF-8');
+            }
         }
 
         if ($input === 'exit' || $input === '') {
