@@ -2,7 +2,7 @@
 
 help:
 	@echo ""
-	@echo "*** AI ADVENT - DAY 7: AGENT WITH PERSISTENT CONVERSATION HISTORY ***"
+	@echo "*** AI ADVENT - DAY 8: TOKEN COUNTING AND LIMIT AWARENESS ***"
 	@echo "=========================================="
 	@echo ""
 	@echo "[*] Available commands:"
@@ -16,8 +16,8 @@ help:
 	@echo "    make lint             Check code style (PSR-12)"
 	@echo ""
 	@echo "  Running:"
-	@echo "    make demo             Run Day 7 demo"
-	@echo "    make test             Run Day 7 interactively"
+	@echo "    make demo             Run Day 8 demo"
+	@echo "    make test             Run Day 8 interactively"
 	@echo ""
 	@echo "  Recording & Upload:"
 	@echo "    make record           Start screen recording and run demo"
@@ -49,20 +49,20 @@ lint:
 	composer run lint
 
 test:
-	@echo "Running Day 7 CLI (interactive mode)..."
-	php days/day7/cli.php
+	@echo "Running Day 8 CLI (interactive mode)..."
+	php days/day8/cli.php
 
 demo:
-	@echo "Running Day 7 demo..."
-	php days/day7/cli.php --case=1
+	@echo "Running Day 8 demo..."
+	php days/day8/cli.php --case=1
 
 record:
-	@echo "Starting screen recording for Day 7 demo..."
-	php tools/record.php --day=7
+	@echo "Starting screen recording for Day 8 demo..."
+	php tools/record.php --day=8
 
 upload:
-	@echo "Uploading latest Day 7 video..."
-	php tools/upload_latest.php 7
+	@echo "Uploading latest Day 8 video..."
+	php tools/upload_latest.php 8
 
 next-day:
 	@if [ -z "$(N)" ]; then echo "Usage: make next-day N=<day_number> [T=\"Title\"]"; exit 1; fi
