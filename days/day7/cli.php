@@ -29,6 +29,14 @@ function loadEnv($filePath) {
 
 $env = loadEnv(__DIR__ . '/../../.env');
 
+// Ensure UTF-8 encoding for stdin/stdout
+if (function_exists('mb_internal_encoding')) {
+    mb_internal_encoding('UTF-8');
+}
+if (function_exists('stream_set_chunk_size')) {
+    stream_set_chunk_size(STDIN, 0);
+}
+
 // Check for Yandex API key
 if (empty($env['YANDEX_API_KEY'])) {
     echo "Error: YANDEX_API_KEY not found in .env\n";
@@ -95,6 +103,11 @@ if ($isDemo) {
     while (true) {
         echo "You: ";
         $input = trim(fgets(STDIN));
+
+        // Ensure input is properly decoded as UTF-8
+        if (!mb_check_encoding($input, 'UTF-8')) {
+            $input = mb_convert_encoding($input, 'UTF-8');
+        }
 
         if ($input === 'exit') {
             break;
