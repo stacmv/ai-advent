@@ -65,7 +65,7 @@ class SlidingWindowStrategy
     public function getContextMessages()
     {
         $windowMessages = array_slice($this->messages, -self::WINDOW_SIZE);
-        return array_map(fn($m) => ['role' => $m['role'], 'content' => $m['text']], $windowMessages);
+        return array_map(fn($m) => ['role' => $m['role'], 'text' => $m['text']], $windowMessages);
     }
 
     public function getStats()
@@ -197,7 +197,7 @@ class StickyFactsStrategy
 
         try {
             $result = $client->chatHistoryWithMetrics([
-                ['role' => 'user', 'content' => $prompt]
+                ['role' => 'user', 'text' => $prompt]
             ], ['temperature' => 0.3, 'max_tokens' => 500]);
 
             $response = $result['text'];
@@ -229,11 +229,11 @@ class StickyFactsStrategy
 
         $recentMessages = array_slice($this->messages, -self::CONTEXT_SIZE);
         $contextMessages = [
-            ['role' => 'system', 'content' => $factsText]
+            ['role' => 'system', 'text' => $factsText]
         ];
 
         foreach ($recentMessages as $msg) {
-            $contextMessages[] = ['role' => $msg['role'], 'content' => $msg['text']];
+            $contextMessages[] = ['role' => $msg['role'], 'text' => $msg['text']];
         }
 
         return $contextMessages;
@@ -388,18 +388,18 @@ class BranchingStrategy
     {
         if ($this->activeBranch === null) {
             // On trunk: return all trunk
-            return array_map(fn($m) => ['role' => $m['role'], 'content' => $m['text']], $this->trunk);
+            return array_map(fn($m) => ['role' => $m['role'], 'text' => $m['text']], $this->trunk);
         } else {
             // On branch: return checkpoint + branch messages
             $contextMessages = [];
             if ($this->checkpoint !== null) {
                 foreach ($this->checkpoint as $msg) {
-                    $contextMessages[] = ['role' => $msg['role'], 'content' => $msg['text']];
+                    $contextMessages[] = ['role' => $msg['role'], 'text' => $msg['text']];
                 }
             }
             if (isset($this->branches[$this->activeBranch])) {
                 foreach ($this->branches[$this->activeBranch] as $msg) {
-                    $contextMessages[] = ['role' => $msg['role'], 'content' => $msg['text']];
+                    $contextMessages[] = ['role' => $msg['role'], 'text' => $msg['text']];
                 }
             }
             return $contextMessages;
@@ -1209,7 +1209,9 @@ function handleUpload()
                     return;
                 }
 
-                for (let i = 0; i < data.cases.length; i++) {
+                let demoStopped = false;
+
+                for (let i = 0; i < data.cases.length && !demoStopped; i++) {
                     const c = data.cases[i];
                     addMsg('demo', '=== Case ' + (i + 1) + ': ' + c.name + ' [' + c.strategy + '] ===');
 
@@ -1217,36 +1219,73 @@ function handleUpload()
                     await fetch('/api/chat/clear', { method: 'POST' });
 
                     for (const step of c.steps) {
-                        if (step.type === 'checkpoint') {
-                            await fetch('/api/branch/checkpoint', { method: 'POST' });
-                            addMsg('info', 'Checkpoint created');
-                        } else if (step.type === 'create_branch') {
-                            await fetch('/api/branch/create', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ name: step.name })
-                            });
-                            addMsg('info', 'Branch ' + step.name + ' created');
-                        } else if (step.type === 'switch_branch') {
-                            await fetch('/api/branch/switch', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ branch: step.branch })
-                            });
-                            addMsg('info', 'Switched to ' + (step.branch || 'trunk'));
-                        } else {
-                            input.value = step;
-                            await sendMessage(step);
-                            await new Promise(resolve => setTimeout(resolve, 1200));
+                        if (demoStopped) break;
+
+                        try {
+                            if (step.type === 'checkpoint') {
+                                await fetch('/api/branch/checkpoint', { method: 'POST' });
+                                addMsg('info', 'Checkpoint created');
+                            } else if (step.type === 'create_branch') {
+                                await fetch('/api/branch/create', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ name: step.name })
+                                });
+                                addMsg('info', 'Branch ' + step.name + ' created');
+                            } else if (step.type === 'switch_branch') {
+                                await fetch('/api/branch/switch', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ branch: step.branch })
+                                });
+                                addMsg('info', 'Switched to ' + (step.branch || 'trunk'));
+                            } else {
+                                input.value = step;
+                                const msgRes = await fetch('/api/chat', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ message: step })
+                                });
+                                const msgData = await msgRes.json();
+
+                                if (msgData.error) {
+                                    addMsg('error', 'API Error: ' + msgData.error);
+                                    addMsg('demo', '⚠ Demo stopped due to API error. Check your API credentials and folder ID.');
+                                    demoStopped = true;
+                                    break;
+                                }
+
+                                if (msgData.response && msgData.response.includes('Error:')) {
+                                    addMsg('error', 'LLM Error: ' + msgData.response.substring(0, 150));
+                                    addMsg('demo', '⚠ Demo stopped due to LLM error.');
+                                    demoStopped = true;
+                                    break;
+                                }
+
+                                const meta = 'Tokens this turn: ' + msgData.tokens.turn_tot
+                                    + '  |  Cumulative: ' + msgData.tokens.total_tot;
+                                addMsg('agent', msgData.response, meta);
+                                await updateStrategyPanel();
+                                await new Promise(resolve => setTimeout(resolve, 1200));
+                            }
+                        } catch (stepError) {
+                            addMsg('error', 'Step error: ' + stepError.message);
+                            addMsg('demo', '⚠ Demo stopped due to error.');
+                            demoStopped = true;
+                            break;
                         }
                     }
 
-                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    if (!demoStopped) {
+                        await new Promise(resolve => setTimeout(resolve, 2000));
+                    }
                 }
 
-                addMsg('demo', 'Demo completed');
+                if (!demoStopped) {
+                    addMsg('demo', 'Demo completed successfully');
+                }
             } catch (e) {
-                addMsg('error', e.message);
+                addMsg('error', 'Fatal error: ' + e.message);
             }
 
             demoBtn.disabled = false;
