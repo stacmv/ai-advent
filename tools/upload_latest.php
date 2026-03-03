@@ -50,7 +50,7 @@ if (!$day) {
     // Try to detect from git branch
     $branch = trim(shell_exec('git branch --show-current 2>/dev/null') ?? '');
 
-    if (preg_match('/day(\d)/', $branch, $matches)) {
+    if (preg_match('/day(\d+)/', $branch, $matches)) {
         $day = $matches[1];
     } else {
         echo "Error: Could not determine day. Usage: php tools/upload_latest.php [day]\n";

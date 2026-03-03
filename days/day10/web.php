@@ -541,6 +541,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         header('Content-Type: application/json; charset=utf-8');
         handleBranchesGet();
         exit;
+    } elseif ($action === '/api/upload/status') {
+        header('Content-Type: application/json; charset=utf-8');
+        handleUploadStatus();
+        exit;
+    } elseif ($action === '/api/upload/reset') {
+        header('Content-Type: application/json; charset=utf-8');
+        handleUploadReset();
+        exit;
     }
 } elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
     header('Content-Type: application/json; charset=utf-8');
@@ -563,6 +571,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         handleRecordStop();
     } elseif ($action === '/api/upload') {
         handleUpload();
+    } elseif ($action === '/api/upload/cancel') {
+        handleUploadCancel();
     } else {
         http_response_code(404);
         echo json_encode(['error' => 'Not found']);
@@ -828,36 +838,122 @@ function handleRecordStop()
 function handleUpload()
 {
     try {
-        $result = shell_exec('php ' . escapeshellarg(__DIR__ . '/../../tools/upload_latest.php') . ' 10 2>&1');
+        $recordingsDir = realpath(__DIR__ . '/../../recordings') ?: __DIR__ . '/../../recordings';
+        $storageDir = realpath(__DIR__ . '/../../storage') ?: __DIR__ . '/../../storage';
+        $progressFile = $storageDir . '/upload_progress.json';
+        $pidFile = $storageDir . '/upload_progress.pid';
 
-        // Check if upload succeeded (look for "Upload successful" in output)
-        if (strpos($result, 'Upload successful') !== false || strpos($result, 'successful') !== false) {
-            // Extract video link from output if present
-            $videoLink = null;
-            if (preg_match('/Видео:\s*(.+?)\n/', $result, $matches)) {
-                $videoLink = trim($matches[1]);
-            }
+        if (!is_dir($storageDir)) {
+            mkdir($storageDir, 0755, true);
+        }
 
-            echo json_encode([
-                'status' => 'Upload completed successfully',
-                'videoLink' => $videoLink
-            ]);
-        } else {
-            // Upload failed
+        if (!is_dir($recordingsDir)) {
             http_response_code(400);
-            $errorMsg = 'Upload failed. Check console output for details.';
-            if (strpos($result, 'Error') !== false) {
-                // Extract error message
-                if (preg_match('/Error:\s*(.+?)\n/', $result, $matches)) {
-                    $errorMsg = trim($matches[1]);
+            echo json_encode(['error' => 'No recordings directory found']);
+            return;
+        }
+
+        // Check if upload already in progress — is the PID alive?
+        if (file_exists($pidFile)) {
+            $pid = (int) @file_get_contents($pidFile);
+            if ($pid > 0) {
+                $out = [];
+                exec('tasklist /FI "PID eq ' . $pid . '" /NH 2>NUL', $out);
+                if (!empty($out) && strpos(implode('', $out), (string) $pid) !== false) {
+                    http_response_code(409);
+                    echo json_encode(['error' => 'Upload already in progress']);
+                    return;
                 }
             }
-            echo json_encode(['error' => $errorMsg]);
+            // Dead PID — clean up
+            @unlink($pidFile);
+            @unlink($progressFile);
+        }
+
+        // Find latest day10 video
+        $files = scandir($recordingsDir, SCANDIR_SORT_DESCENDING);
+        $dayVideos = array_filter($files, function ($f) {
+            return preg_match('/day10_.*\.mp4$/', $f);
+        });
+
+        if (empty($dayVideos)) {
+            http_response_code(400);
+            echo json_encode(['error' => 'No recordings found for day 10']);
+            return;
+        }
+
+        $latestFile = reset($dayVideos);
+        $filePath = "{$recordingsDir}/{$latestFile}";
+        $fSize = filesize($filePath);
+        $units = ['B', 'KB', 'MB', 'GB'];
+        $b = max($fSize, 0);
+        $p = floor(($b ? log($b) : 0) / log(1024));
+        $p = min($p, count($units) - 1);
+        $b /= (1 << (10 * $p));
+        $fileSizeFormatted = round($b, 2) . ' ' . $units[$p];
+
+        // Clean any leftover state
+        @unlink($progressFile);
+        @unlink($pidFile);
+
+        // Spawn background: exact same path as `make upload`
+        $script = __DIR__ . '/../../tools/upload_progress.php';
+        $cmd = 'php ' . escapeshellarg($script) . ' 10 ' . escapeshellarg($storageDir);
+        pclose(popen('start /B ' . $cmd . ' >NUL 2>&1', 'r'));
+
+        echo json_encode([
+            'status' => 'started',
+            'fileName' => $latestFile,
+            'fileSizeFormatted' => $fileSizeFormatted,
+        ]);
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode(['error' => $e->getMessage()]);
+    }
+}
+
+function handleUploadStatus()
+{
+    try {
+        $storageDir = realpath(__DIR__ . '/../../storage') ?: __DIR__ . '/../../storage';
+        $progressFile = $storageDir . '/upload_progress.json';
+
+        if (file_exists($progressFile)) {
+            $data = json_decode(file_get_contents($progressFile), true);
+            echo json_encode($data);
+        } else {
+            echo json_encode(['status' => 'idle']);
         }
     } catch (Exception $e) {
         http_response_code(500);
         echo json_encode(['error' => $e->getMessage()]);
     }
+}
+
+function killUploadProcess()
+{
+    $storageDir = realpath(__DIR__ . '/../../storage') ?: __DIR__ . '/../../storage';
+    $pidFile = $storageDir . '/upload_progress.pid';
+    $progressFile = $storageDir . '/upload_progress.json';
+
+    $pid = @file_get_contents($pidFile);
+    if ($pid) {
+        exec('taskkill /F /T /PID ' . (int) $pid . ' 2>NUL');
+    }
+    @unlink($pidFile);
+    @unlink($progressFile);
+}
+
+function handleUploadCancel()
+{
+    killUploadProcess();
+    echo json_encode(['status' => 'cancelled']);
+}
+
+function handleUploadReset()
+{
+    killUploadProcess();
+    echo json_encode(['status' => 'reset']);
 }
 
 // Serve HTML
@@ -981,6 +1077,35 @@ function handleUpload()
         }
         #send:hover { background: #1177bb; }
         #send:disabled { background: #3c3c3c; color: #6a6a6a; cursor: not-allowed; }
+        .upload-panel {
+            background: #2d2d30;
+            border-left: 3px solid #569cd6;
+            padding: 12px 16px;
+            margin-bottom: 12px;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+        .upload-bar-wrap {
+            background: #3c3c3c;
+            border-radius: 2px;
+            height: 8px;
+            overflow: hidden;
+            margin: 6px 0;
+        }
+        .upload-bar-fill {
+            background: #569cd6;
+            height: 100%;
+            width: 0%;
+        }
+        .upload-bar-fill.done { background: #4ec9b0; animation: none !important; }
+        .upload-bar-fill.error { background: #f44747; animation: none !important; }
+        @keyframes upload-pulse {
+            0%, 100% { opacity: 0.4; }
+            50% { opacity: 1; }
+        }
+        .upload-stats { color: #808080; font-size: 12px; }
+        .upload-link { color: #4ec9b0; word-break: break-all; }
+        .upload-error { color: #f44747; }
     </style>
 </head>
 <body>
@@ -995,6 +1120,7 @@ function handleUpload()
                 <button id="record-start-btn" title="Start screen recording">Record</button>
                 <button id="record-stop-btn" title="Stop screen recording" disabled>Stop</button>
                 <button id="upload-btn" title="Upload latest video">Upload</button>
+                <button id="upload-reset-btn" title="Reset stuck upload" style="display:none">Reset Upload</button>
                 <button id="clear-btn" title="Clear chat log">Clear Log</button>
             </div>
         </div>
@@ -1354,21 +1480,131 @@ function handleUpload()
             }
         }
 
+        let uploadPanelEl = null;
+        let uploadStartTime = null;
+        let uploadTimerInterval = null;
+
+        function formatElapsed(seconds) {
+            const m = Math.floor(seconds / 60);
+            const s = Math.floor(seconds % 60);
+            return m + ':' + (s < 10 ? '0' : '') + s;
+        }
+
+        function createUploadPanel(fileName, fileSize) {
+            if (uploadPanelEl) uploadPanelEl.remove();
+            uploadPanelEl = document.createElement('div');
+            uploadPanelEl.className = 'msg demo upload-panel';
+            uploadPanelEl.innerHTML = `
+                <span class="label">Upload:</span>
+                <div class="up-filename"></div>
+                <div class="upload-bar-wrap"><div class="upload-bar-fill"></div></div>
+                <div class="upload-stats"></div>
+                <div class="upload-extra"></div>
+            `;
+            uploadPanelEl.querySelector('.up-filename').textContent =
+                fileName + ' (' + fileSize + ')';
+            log.appendChild(uploadPanelEl);
+            log.scrollTop = log.scrollHeight;
+
+            // Start elapsed timer
+            uploadStartTime = Date.now();
+            const bar = uploadPanelEl.querySelector('.upload-bar-fill');
+            const stats = uploadPanelEl.querySelector('.upload-stats');
+            bar.style.width = '100%';
+            bar.style.animation = 'upload-pulse 1.5s ease-in-out infinite';
+            stats.textContent = 'Uploading… 0:00';
+            uploadTimerInterval = setInterval(() => {
+                const elapsed = Math.floor((Date.now() - uploadStartTime) / 1000);
+                stats.textContent = 'Uploading… ' + formatElapsed(elapsed);
+            }, 1000);
+        }
+
+        function finishUploadPanel(status, data) {
+            if (uploadTimerInterval) clearInterval(uploadTimerInterval);
+            uploadTimerInterval = null;
+            if (!uploadPanelEl) return;
+            const bar = uploadPanelEl.querySelector('.upload-bar-fill');
+            const stats = uploadPanelEl.querySelector('.upload-stats');
+            const extra = uploadPanelEl.querySelector('.upload-extra');
+            bar.style.animation = 'none';
+            const elapsed = uploadStartTime
+                ? formatElapsed(Math.floor((Date.now() - uploadStartTime) / 1000))
+                : '--';
+
+            if (status === 'done') {
+                bar.className = 'upload-bar-fill done';
+                bar.style.width = '100%';
+                const codeLink = data.codeLink || 'https://github.com/stacmv/ai-advent/tree/day10';
+                const videoLink = data.videoLink || '(not available)';
+                stats.textContent = 'Upload complete — ' + elapsed;
+                extra.innerHTML = '<div style="margin-top:6px">'
+                    + '<div>Код: <a href="' + codeLink + '" target="_blank" class="upload-link">'
+                    + codeLink + '</a></div>'
+                    + '<div>Видео: <a href="' + videoLink + '" target="_blank" class="upload-link">'
+                    + videoLink + '</a></div>'
+                    + '</div>';
+            } else if (status === 'error') {
+                bar.className = 'upload-bar-fill error';
+                stats.innerHTML = `<span class="upload-error">Error: ${data.error || 'unknown'}</span>`;
+            } else if (status === 'cancelled') {
+                bar.className = 'upload-bar-fill error';
+                stats.innerHTML = '<span class="upload-error">Cancelled</span>';
+            }
+        }
+
+        async function resetUpload() {
+            try {
+                await fetch('/api/upload/reset', { method: 'GET' });
+                if (uploadTimerInterval) clearInterval(uploadTimerInterval);
+                if (uploadPanelEl) uploadPanelEl.remove();
+                uploadPanelEl = null;
+                document.getElementById('upload-reset-btn').style.display = 'none';
+                uploadBtn.disabled = false;
+                addMsg('info', 'Upload reset.');
+            } catch (e) {
+                addMsg('error', 'Reset failed: ' + e.message);
+            }
+        }
+
         async function upload() {
             uploadBtn.disabled = true;
-            addMsg('demo', 'Uploading latest video…');
             try {
                 const res = await fetch('/api/upload', { method: 'POST' });
                 const data = await res.json();
-                uploadBtn.disabled = false;
+
                 if (data.error) {
-                    addMsg('error', 'Upload failed: ' + data.error);
-                } else {
-                    addMsg('demo', 'Upload completed successfully!');
-                    if (data.videoLink) {
-                        addMsg('info', 'Video: ' + data.videoLink);
+                    if (res.status === 409) {
+                        addMsg('error', 'Upload in progress. Click "Reset Upload" to force-clear.');
+                        document.getElementById('upload-reset-btn').style.display = 'inline-block';
+                    } else {
+                        addMsg('error', 'Upload failed: ' + data.error);
                     }
+                    uploadBtn.disabled = false;
+                    return;
                 }
+
+                createUploadPanel(data.fileName, data.fileSizeFormatted || '');
+
+                // Poll for completion
+                const pollInterval = setInterval(async () => {
+                    try {
+                        const sr = await fetch('/api/upload/status');
+                        const sd = await sr.json();
+
+                        if (sd.status === 'done') {
+                            clearInterval(pollInterval);
+                            finishUploadPanel('done', sd);
+                            uploadBtn.disabled = false;
+                        } else if (sd.status === 'error' || sd.status === 'cancelled') {
+                            clearInterval(pollInterval);
+                            finishUploadPanel(sd.status, sd);
+                            uploadBtn.disabled = false;
+                        }
+                        // else: still uploading, timer keeps ticking
+                    } catch (e) {
+                        console.error('Status poll error:', e);
+                    }
+                }, 1000);
             } catch (e) {
                 addMsg('error', 'Upload error: ' + e.message);
                 uploadBtn.disabled = false;
@@ -1382,6 +1618,7 @@ function handleUpload()
         recordStartBtn.addEventListener('click', startRecording);
         recordStopBtn.addEventListener('click', stopRecording);
         uploadBtn.addEventListener('click', upload);
+        document.getElementById('upload-reset-btn').addEventListener('click', resetUpload);
         clearBtn.addEventListener('click', () => { log.innerHTML = ''; input.focus(); });
 
         document.getElementById('strategy-window-btn').addEventListener('click', () => switchStrategy('window'));

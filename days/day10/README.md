@@ -286,65 +286,88 @@ make up
 
 ---
 
-## Conclusions & Comparisons
+## Test Results: Same Scenario, Three Strategies
 
-### Token Efficiency
+### Scenario
 
-| Strategy | Extra Overhead | Best For |
-|----------|---|---|
-| **Sliding Window** | 0% (baseline) | Stateless conversations |
-| **Sticky Facts** | +10-15% | Long conversations with key decisions |
-| **Branching** | 0% (checkpoint duplicated in context) | Exploration & comparison |
+All three strategies were tested on the **same scenario**: planning an online bookstore for university students/professors (10-turn conversation about requirements, budget, team, tech stack, ending with "compile a summary spec").
 
-### Context Preservation
+### Token Usage (Actual Measurements)
 
-| Strategy | Information Lost | When It Matters |
-|----------|---|---|
-| **Sliding Window** | Yes (old messages dropped) | Projects, planning, complex reasoning |
-| **Sticky Facts** | No (key facts preserved) | Requirements that change over time |
-| **Branching** | No (checkpoint always available) | What-if analysis, design decisions |
+| Strategy | Input Tokens | Output Tokens | Total | Overhead vs Window |
+|----------|-------------|--------------|-------|-------------------|
+| **Sliding Window** | 17 436 | 4 970 | **22 406** | baseline |
+| **Sticky Facts** | 12 771 + 26 087 (facts) | 4 766 + 4 698 (facts) | **48 322** | **+116%** |
+| **Branching** | 30 321 | 5 329 | **35 650** | +59% |
 
-### Implementation Complexity
+**Facts strategy** costs 2× more tokens because every turn triggers an additional LLM call to extract/update structured facts. The chat input tokens are actually *lower* (12 771 vs 17 436) because only 6 recent messages are sent, but the facts extraction calls (26 087 input) dominate the budget.
 
-| Strategy | Code Lines | API Calls | Dependencies |
-|----------|---|---|---|
-| **Sliding Window** | ~60 | 0 (per turn) | None |
-| **Sticky Facts** | ~150 | 1 per turn (facts extraction) | LLM client |
-| **Branching** | ~180 | 0 (per turn) | None |
+**Branching strategy** costs more because the trunk checkpoint (14 messages) is duplicated in each branch context, plus 12 additional branch messages across branches A and B.
+
+### Quality of Final Response
+
+| Criterion | Window | Facts | Branching |
+|-----------|--------|-------|-----------|
+| Audience (students/professors) retained? | **No** — lost | **Yes** — exact | A: Yes, B: vague |
+| Budget (500K rubles) retained? | **Vague** — "plan the budget" | **Exact** — "500 000 rubles" | A: Yes, B: range 500K–1M |
+| Timeline (3 months) retained? | Yes | Yes | Yes |
+| Team (3 devs) retained? | Yes | Yes | Yes |
+| Mobile app requirement? | Yes | Yes | A: excluded (correct), B: Yes |
+| 1C integration? | Yes | Yes | Yes |
+| Early-conversation details? | **Lost** after window slides | **All preserved** via facts | Good (via trunk checkpoint) |
+
+### Stability (Information Loss Over Time)
+
+**Sliding Window** — clearly loses early context. Audience and budget (defined in messages 2 and 4) disappeared from the final spec because they fell outside the 10-message window. The model compensated by being verbose and generic.
+
+**Sticky Facts** — best retention. Every key detail from message 1 through message 20 was preserved in the structured facts object (`goal`, `audience`, `budget`, `features`, `timeline`, `tech_stack`, `decisions`). The final spec included even minor details like "personalized textbook recommendations" from message 3.
+
+**Branching** — good retention within each branch thanks to the checkpoint mechanism. Branch A (budget variant) preserved all trunk details. Branch B (full variant) slightly lost audience specificity — a sign that branch-local messages can push early trunk details toward the edges of attention.
 
 ### User Experience
 
-| Strategy | UI Complexity | Manual Work | Learning Curve |
-|----------|---|---|---|
-| **Sliding Window** | Minimal | None | Immediate |
-| **Sticky Facts** | Medium (facts panel) | None (automatic) | Medium |
-| **Branching** | Medium (branch buttons) | Manual (switch branches) | Medium-High |
+| Strategy | UX Quality | Manual Effort | Best Moment |
+|----------|-----------|--------------|-------------|
+| **Sliding Window** | Simple, familiar chat | None | Immediate — just type |
+| **Sticky Facts** | Rich — facts panel shows extracted data updating live | None (automatic) | Seeing facts auto-populate after 3-4 turns |
+| **Branching** | Powerful but complex — checkpoint/branch/switch buttons | Manual: create checkpoint, create branches, switch | Comparing two alternative specs side by side |
 
 ---
 
-## Key Insights
+## Conclusions
 
 ### 1. No Single Winner
 Each strategy excels in different scenarios:
-- **Window**: Fast, simple, stateless (REST APIs, chatbots)
-- **Facts**: Rich context without losing information (product design, planning)
-- **Branching**: Structured exploration (architecture decisions, A/B testing)
+- **Window**: Fast, simple, cheapest (REST APIs, chatbots, short conversations)
+- **Facts**: Best information retention, highest token cost (project planning, requirements gathering)
+- **Branching**: Unique ability to explore alternatives (architecture decisions, what-if analysis)
 
-### 2. Cost vs. Benefit
-- **Window**: 0% overhead, but information loss
-- **Facts**: ~12% overhead (1 extra LLM call per turn), preserves information
-- **Branching**: No overhead, but requires manual management
+### 2. Facts Extraction: Quality vs Cost
+- Facts strategy preserved **100% of key details** across 20 messages — no other strategy matched this
+- But it cost **2× more tokens** than the baseline window approach
+- The 10–15% overhead estimate from theory turned out to be **116% in practice** because facts extraction sends the *entire* conversation each time
+- Trade-off is worthwhile for high-stakes conversations (project specs, contracts) but overkill for casual Q&A
 
-### 3. Real-World Hybrid Approach
-In production, you might:
-- Start with **Window** for initial turns (fast & cheap)
-- Switch to **Facts** when conversation becomes complex
-- Use **Branching** only for critical decision points
+### 3. Window Strategy: The "Forgetting" Problem Is Real
+- On a 10-turn planning conversation, the window strategy lost **audience** and **budget** — two of the most important project parameters
+- This isn't theoretical — it happened on a standard ТЗ-gathering scenario
+- For conversations longer than the window size, this strategy is **unreliable for planning tasks**
 
-### 4. Facts Extraction Quality
-- LLM-based extraction works well for structured domains (projects, specs)
-- May miss subtle implications or contradictions
-- Can be combined with user-manual facts input for high-stakes decisions
+### 4. Branching: Unique Value, Unique Complexity
+- The only strategy that produced **two alternative specs** from one conversation
+- Branch B estimated a realistic 500K–1M range instead of blindly repeating 500K — qualitatively better reasoning
+- But requires manual checkpoint/branch/switch management — not suitable for all users
+
+### 5. Real-World Hybrid Approach
+In production, the optimal approach would combine strategies:
+- Start with **Window** for initial turns (cheap, no overhead)
+- Switch to **Facts** when conversation becomes complex (automatic, preserves everything)
+- Use **Branching** only at critical decision points (manual, but powerful)
+
+### 6. Facts Extraction Format Matters
+- Structured extraction (7 named fields) worked better than free-form summarization (Day 9)
+- The model's responses started echoing the facts template structure — a side effect that actually improved consistency
+- Could be combined with user-editable facts for highest reliability
 
 ---
 
