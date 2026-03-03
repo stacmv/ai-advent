@@ -2,7 +2,7 @@
 
 help:
 	@echo ""
-	@echo "*** AI ADVENT - DAY 9: CONTEXT COMPRESSION WITH SUMMARY ***"
+	@echo "*** AI ADVENT - DAY 10: CONTEXT MANAGEMENT STRATEGIES ***"
 	@echo "=========================================="
 	@echo ""
 	@echo "[*] Available commands:"
@@ -55,7 +55,7 @@ up:
 	@if [ -f .server.pid ] && kill -0 $$(cat .server.pid) 2>/dev/null; then \
 		echo "✓ Server already running on http://localhost:$$(cat .server.port) (PID: $$(cat .server.pid))"; \
 	else \
-		echo "Starting Day 9 web client at http://localhost:... "; \
+		echo "Starting Day 10 web client at http://localhost:... "; \
 		php tools/serve.php > .server.log 2>&1 & echo $$! > .server.pid; \
 		sleep 2; \
 		if [ -f .server.pid ] && kill -0 $$(cat .server.pid) 2>/dev/null; then \
@@ -88,8 +88,8 @@ status:
 	fi
 
 upload:
-	@echo "Uploading latest Day 9 video..."
-	php tools/upload_latest.php 9
+	@echo "Uploading latest Day 10 video..."
+	php tools/upload_latest.php 10
 
 next-day:
 	@if [ -z "$(N)" ]; then echo "Usage: make next-day N=<day_number> [T=\"Title\"]"; exit 1; fi
