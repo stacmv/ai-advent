@@ -115,6 +115,7 @@ Each day lives on its own branch. Shared code (LLMClient, tools) is on `main`.
 | `day7` | Persistent History — multi-turn conversation saved across sessions |
 | `day8` | Token Counting — per-turn and cumulative usage with limit warnings |
 | `day9` | Context Compression — auto-summarize old context to stay within limits |
+| `day10` | Context Management Strategies — compare Sliding Window vs Sticky Facts vs Branching |
 
 ## API Keys Setup
 
