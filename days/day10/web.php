@@ -829,7 +829,31 @@ function handleUpload()
 {
     try {
         $result = shell_exec('php ' . escapeshellarg(__DIR__ . '/../../tools/upload_latest.php') . ' 10 2>&1');
-        echo json_encode(['status' => 'Upload completed', 'output' => $result]);
+
+        // Check if upload succeeded (look for "Upload successful" in output)
+        if (strpos($result, 'Upload successful') !== false || strpos($result, 'successful') !== false) {
+            // Extract video link from output if present
+            $videoLink = null;
+            if (preg_match('/Видео:\s*(.+?)\n/', $result, $matches)) {
+                $videoLink = trim($matches[1]);
+            }
+
+            echo json_encode([
+                'status' => 'Upload completed successfully',
+                'videoLink' => $videoLink
+            ]);
+        } else {
+            // Upload failed
+            http_response_code(400);
+            $errorMsg = 'Upload failed. Check console output for details.';
+            if (strpos($result, 'Error') !== false) {
+                // Extract error message
+                if (preg_match('/Error:\s*(.+?)\n/', $result, $matches)) {
+                    $errorMsg = trim($matches[1]);
+                }
+            }
+            echo json_encode(['error' => $errorMsg]);
+        }
     } catch (Exception $e) {
         http_response_code(500);
         echo json_encode(['error' => $e->getMessage()]);
@@ -1338,12 +1362,15 @@ function handleUpload()
                 const data = await res.json();
                 uploadBtn.disabled = false;
                 if (data.error) {
-                    addMsg('error', data.error);
+                    addMsg('error', 'Upload failed: ' + data.error);
                 } else {
-                    addMsg('demo', 'Upload completed: ' + data.output);
+                    addMsg('demo', 'Upload completed successfully!');
+                    if (data.videoLink) {
+                        addMsg('info', 'Video: ' + data.videoLink);
+                    }
                 }
             } catch (e) {
-                addMsg('error', e.message);
+                addMsg('error', 'Upload error: ' + e.message);
                 uploadBtn.disabled = false;
             }
         }
