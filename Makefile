@@ -1,4 +1,4 @@
-.PHONY: help install lint test demo record upload clean setup get-token next-day up
+.PHONY: help install lint test demo record upload clean setup get-token next-day up down
 
 help:
 	@echo ""
@@ -16,7 +16,8 @@ help:
 	@echo "    make lint             Check code style (PSR-12)"
 	@echo ""
 	@echo "  Running:"
-	@echo "    make up               Start web server (localhost:8080)"
+	@echo "    make up               Start web server (auto-detects free port)"
+	@echo "    make down             Stop web server"
 	@echo "    make demo             Run Day 11 demo via API"
 	@echo ""
 	@echo "  Recording & Upload:"
@@ -49,8 +50,29 @@ lint:
 	composer run lint
 
 up:
-	@echo "Starting web server on localhost:8080..."
-	php -S localhost:8080 -t . days/day11/web.php
+	@if [ -f .server.pid ] && kill -0 $$(cat .server.pid) 2>/dev/null; then \
+		echo "✓ Server already running on http://localhost:$$(cat .server.port) (PID: $$(cat .server.pid))"; \
+	else \
+		echo "Starting Day 11 web server on free port..."; \
+		php tools/serve.php > .server.log 2>&1 & echo $$! > .server.pid; \
+		sleep 2; \
+		if [ -f .server.pid ] && kill -0 $$(cat .server.pid) 2>/dev/null; then \
+			echo "✓ Server started on http://localhost:$$(cat .server.port) (PID: $$(cat .server.pid))"; \
+			echo "  Logs: .server.log"; \
+		else \
+			echo "✗ Failed to start server. Check .server.log"; \
+			rm -f .server.pid .server.port; \
+			exit 1; \
+		fi \
+	fi
+
+down:
+	@if [ -f .server.pid ]; then \
+		kill $$(cat .server.pid) 2>/dev/null && echo "✓ Server stopped" || true; \
+		rm -f .server.pid .server.port .server.log; \
+	else \
+		echo "No server running"; \
+	fi
 
 demo:
 	@echo "Running Day 11 demo..."
