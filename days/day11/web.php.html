@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Day 11: Assistant Memory Model</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background: white;
+            border-bottom: 2px solid #ddd;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+
+        h1 {
+            margin-bottom: 15px;
+            color: #1a73e8;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+        }
+
+        button, .button {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: #1a73e8;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #1557b0;
+        }
+
+        .btn-secondary {
+            background: #34a853;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #2d8e47;
+        }
+
+        .btn-danger {
+            background: #ea4335;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c5221f;
+        }
+
+        .btn-demo {
+            background: #9c27b0;
+            color: white;
+        }
+
+        .btn-demo:hover {
+            background: #7b1fa2;
+        }
+
+        .demo-section {
+            background: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+            border-left: 4px solid #9c27b0;
+        }
+
+        .demo-case-btn {
+            padding: 8px 12px;
+            font-size: 13px;
+            margin-right: 8px;
+            margin-bottom: 8px;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .memory-panel {
+            background: white;
+            border-radius: 4px;
+            padding: 20px;
+            border: 1px solid #ddd;
+        }
+
+        .memory-panel h3 {
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #f0f0f0;
+            font-size: 16px;
+        }
+
+        .memory-layer {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f9f9f9;
+            border-left: 4px solid #ccc;
+            border-radius: 2px;
+            font-size: 13px;
+        }
+
+        .memory-layer.short-term {
+            border-left-color: #1a73e8;
+        }
+
+        .memory-layer.working {
+            border-left-color: #ea4335;
+        }
+
+        .memory-layer.long-term {
+            border-left-color: #34a853;
+        }
+
+        .memory-layer h4 {
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .memory-layer .empty {
+            color: #999;
+            font-style: italic;
+        }
+
+        .memory-item {
+            padding: 8px 0;
+            border-bottom: 1px solid #e0e0e0;
+            word-break: break-word;
+        }
+
+        .memory-item:last-child {
+            border-bottom: none;
+        }
+
+        .memory-label {
+            font-weight: 600;
+            color: #333;
+            display: inline-block;
+            min-width: 80px;
+        }
+
+        .chat-container {
+            display: flex;
+            flex-direction: column;
+            background: white;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            overflow: hidden;
+        }
+
+        .chat-log {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            min-height: 400px;
+            max-height: 500px;
+            background: #fafafa;
+        }
+
+        .chat-message {
+            margin-bottom: 15px;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message-user {
+            text-align: right;
+        }
+
+        .message-bubble {
+            display: inline-block;
+            padding: 12px 16px;
+            border-radius: 12px;
+            max-width: 70%;
+            word-wrap: break-word;
+        }
+
+        .message-user .message-bubble {
+            background: #1a73e8;
+            color: white;
+        }
+
+        .message-assistant .message-bubble {
+            background: #e8e8e8;
+            color: #333;
+        }
+
+        .chat-input-area {
+            display: flex;
+            gap: 10px;
+            padding: 15px;
+            border-top: 1px solid #ddd;
+            background: white;
+        }
+
+        .chat-input-area input {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .chat-input-area input:focus {
+            outline: none;
+            border-color: #1a73e8;
+            box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.1);
+        }
+
+        .chat-input-area button {
+            padding: 12px 20px;
+        }
+
+        .status {
+            margin-top: 10px;
+            padding: 10px;
+            background: #f0f0f0;
+            border-radius: 4px;
+            font-size: 12px;
+            text-align: center;
+            color: #666;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border: 2px solid #ddd;
+            border-top-color: #1a73e8;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .profile-form, .knowledge-form, .task-form {
+            background: white;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+
+        .form-group {
+            margin-bottom: 12px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            color: #666;
+        }
+
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            font-size: 13px;
+            font-family: inherit;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 60px;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #1a73e8;
+            box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.1);
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 0;
+            border-bottom: 2px solid #ddd;
+            margin-bottom: 20px;
+        }
+
+        .tab-btn {
+            padding: 12px 20px;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            font-weight: 500;
+            transition: all 0.2s;
+            color: #666;
+        }
+
+        .tab-btn.active {
+            color: #1a73e8;
+            border-bottom-color: #1a73e8;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .comparison-box {
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background: #f9f9f9;
+        }
+
+        .comparison-box h4 {
+            margin-bottom: 10px;
+            color: #333;
+            font-size: 14px;
+        }
+
+        .comparison-box p {
+            font-size: 13px;
+            line-height: 1.5;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🧠 Day 11: Assistant Memory Model</h1>
+            <p style="color: #666; margin-bottom: 15px;">Explicit three-layer memory system: Short-Term (dialog) | Working (tasks) | Long-Term (knowledge)</p>
+
+            <div class="button-group">
+                <button class="btn-demo" onclick="loadDemo(1)">Demo 1: Profile Impact</button>
+                <button class="btn-demo" onclick="loadDemo(2)">Demo 2: Task Switching</button>
+                <button class="btn-demo" onclick="loadDemo(3)">Demo 3: Knowledge Retention</button>
+                <button class="btn-secondary" onclick="clearAllMemory()">Clear All Memory</button>
+            </div>
+
+            <div class="button-group">
+                <button class="btn-primary" id="recordBtn" onclick="toggleRecord()">Record</button>
+                <button class="btn-primary" id="uploadBtn" onclick="uploadVideo()" style="display:none;">Upload</button>
+                <span id="recordStatus"></span>
+            </div>
+        </header>
+
+        <div class="demo-section" id="demoInfo" style="display:none;">
+            <h3>📝 Demo Running</h3>
+            <div id="demoProgress"></div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 20px; margin-bottom: 20px;">
+            <!-- Memory Display -->
+            <div class="memory-panel">
+                <h3>Memory Layers</h3>
+
+                <div class="memory-layer short-term">
+                    <h4>📍 Short-Term Memory</h4>
+                    <div id="shortTermDisplay" class="empty">No messages yet</div>
+                </div>
+
+                <div class="memory-layer working">
+                    <h4>🎯 Working Memory</h4>
+                    <div id="workingDisplay" class="empty">No active task</div>
+                </div>
+
+                <div class="memory-layer long-term">
+                    <h4>🏛️ Long-Term Memory</h4>
+                    <div id="longTermDisplay" class="empty">No profile or knowledge</div>
+                </div>
+
+                <div style="margin-top: 15px;">
+                    <button class="btn-secondary" style="width: 100%; font-size: 12px;" onclick="refreshMemoryDisplay()">Refresh Display</button>
+                </div>
+            </div>
+
+            <!-- Chat Interface -->
+            <div class="chat-container">
+                <div class="chat-log" id="chatLog"></div>
+                <div class="chat-input-area">
+                    <input type="text" id="messageInput" placeholder="Type your message..." onkeypress="handleKeyPress(event)">
+                    <button class="btn-primary" onclick="sendMessage()">Send</button>
+                </div>
+                <div class="status" id="chatStatus"></div>
+            </div>
+        </div>
+
+        <!-- Memory Configuration Tabs -->
+        <div style="background: white; padding: 20px; border-radius: 4px; border: 1px solid #ddd;">
+            <div class="tabs">
+                <button class="tab-btn active" onclick="showTab('profile')">User Profile</button>
+                <button class="tab-btn" onclick="showTab('knowledge')">Knowledge Base</button>
+                <button class="tab-btn" onclick="showTab('task')">Task Management</button>
+            </div>
+
+            <!-- Profile Tab -->
+            <div id="profile" class="tab-content active">
+                <div class="profile-form">
+                    <h4 style="margin-bottom: 15px;">Set User Profile (Long-Term Memory)</h4>
+                    <div class="form-group">
+                        <label>Name</label>
+                        <input type="text" id="profileName" placeholder="e.g., Alice">
+                    </div>
+                    <div class="form-group">
+                        <label>Role</label>
+                        <input type="text" id="profileRole" placeholder="e.g., Product Manager">
+                    </div>
+                    <div class="form-group">
+                        <label>Expertise</label>
+                        <input type="text" id="profileExpertise" placeholder="e.g., Python, Data Science">
+                    </div>
+                    <div class="form-group">
+                        <label>Preferences</label>
+                        <textarea id="profilePreferences" placeholder="e.g., Prefers detailed explanations..."></textarea>
+                    </div>
+                    <button class="btn-secondary" onclick="setUserProfile()">Save Profile</button>
+                </div>
+            </div>
+
+            <!-- Knowledge Tab -->
+            <div id="knowledge" class="tab-content">
+                <div class="profile-form">
+                    <h4 style="margin-bottom: 15px;">Add Knowledge (Long-Term Memory)</h4>
+                    <div class="form-group">
+                        <label>Domain</label>
+                        <input type="text" id="knowledgeDomain" placeholder="e.g., Programming">
+                    </div>
+                    <div class="form-group">
+                        <label>Knowledge Item</label>
+                        <textarea id="knowledgeItem" placeholder="e.g., User prefers clean code and design patterns..."></textarea>
+                    </div>
+                    <button class="btn-secondary" onclick="addKnowledge()">Add Knowledge</button>
+                </div>
+            </div>
+
+            <!-- Task Tab -->
+            <div id="task" class="tab-content">
+                <div class="profile-form">
+                    <h4 style="margin-bottom: 15px;">Task Management (Working Memory)</h4>
+                    <div class="form-group">
+                        <label>Task Name</label>
+                        <input type="text" id="taskName" placeholder="e.g., API Design">
+                    </div>
+                    <div class="form-group">
+                        <label>Task Description</label>
+                        <textarea id="taskDescription" placeholder="e.g., Design REST API for user authentication..."></textarea>
+                    </div>
+                    <div class="button-group">
+                        <button class="btn-secondary" onclick="setCurrentTask()">Start Task</button>
+                        <button class="btn-danger" onclick="completeTask()">Complete Task</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '/days/day11';
+
+        async function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const message = input.value.trim();
+
+            if (!message) return;
+
+            input.value = '';
+            appendMessage('user', message);
+            updateStatus('Sending...');
+
+            try {
+                const response = await fetch(`${API_BASE}/api/chat`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message })
+                });
+
+                const data = await response.json();
+
+                if (data.error) {
+                    appendMessage('assistant', `Error: ${data.error}`);
+                } else {
+                    appendMessage('assistant', data.response);
+                    updateMemoryDisplay();
+                }
+
+                updateStatus(`Memory: Short-term: ${data.memory.shortTerm}, Working: ${data.memory.working}, Long-term: ${data.memory.longTerm}`);
+            } catch (error) {
+                appendMessage('assistant', `Error: ${error.message}`);
+                updateStatus('Error sending message');
+            }
+        }
+
+        function appendMessage(role, text) {
+            const chatLog = document.getElementById('chatLog');
+            const msg = document.createElement('div');
+            msg.className = `chat-message message-${role}`;
+            msg.innerHTML = `<div class="message-bubble">${escapeHtml(text)}</div>`;
+            chatLog.appendChild(msg);
+            chatLog.scrollTop = chatLog.scrollHeight;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function updateStatus(text) {
+            document.getElementById('chatStatus').textContent = text;
+        }
+
+        async function setUserProfile() {
+            const profile = {
+                name: document.getElementById('profileName').value,
+                role: document.getElementById('profileRole').value,
+                expertise: document.getElementById('profileExpertise').value,
+                preferences: document.getElementById('profilePreferences').value
+            };
+
+            try {
+                await fetch(`${API_BASE}/api/memory/set-profile`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ profile })
+                });
+
+                updateMemoryDisplay();
+                alert('Profile saved!');
+            } catch (error) {
+                alert(`Error: ${error.message}`);
+            }
+        }
+
+        async function addKnowledge() {
+            const knowledge = document.getElementById('knowledgeItem').value;
+            const domain = document.getElementById('knowledgeDomain').value || 'general';
+
+            try {
+                await fetch(`${API_BASE}/api/memory/add-knowledge`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ domain, knowledge })
+                });
+
+                document.getElementById('knowledgeItem').value = '';
+                updateMemoryDisplay();
+                alert('Knowledge added!');
+            } catch (error) {
+                alert(`Error: ${error.message}`);
+            }
+        }
+
+        async function setCurrentTask() {
+            const name = document.getElementById('taskName').value;
+            const description = document.getElementById('taskDescription').value;
+
+            if (!name || !description) {
+                alert('Please fill in task name and description');
+                return;
+            }
+
+            try {
+                await fetch(`${API_BASE}/api/task/set`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, description })
+                });
+
+                updateMemoryDisplay();
+                alert('Task started!');
+            } catch (error) {
+                alert(`Error: ${error.message}`);
+            }
+        }
+
+        async function completeTask() {
+            try {
+                await fetch(`${API_BASE}/api/task/complete`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
+                });
+
+                updateMemoryDisplay();
+                alert('Task completed and archived to long-term memory!');
+            } catch (error) {
+                alert(`Error: ${error.message}`);
+            }
+        }
+
+        async function updateMemoryDisplay() {
+            try {
+                const response = await fetch(`${API_BASE}/api/memory`);
+                const data = response.json();
+                data.then(memory => {
+                    // Short-term
+                    const stDisplay = document.getElementById('shortTermDisplay');
+                    if (memory.shortTerm.count === 0) {
+                        stDisplay.innerHTML = '<div class="empty">No messages yet</div>';
+                    } else {
+                        stDisplay.innerHTML = `<div class="memory-item"><span class="memory-label">Messages:</span> ${memory.shortTerm.count} (last 10 kept)</div>`;
+                    }
+
+                    // Working memory
+                    const workDisplay = document.getElementById('workingDisplay');
+                    if (memory.working.currentTask) {
+                        workDisplay.innerHTML = `
+                            <div class="memory-item"><span class="memory-label">Task:</span> ${memory.working.currentTask.name}</div>
+                            <div class="memory-item"><span class="memory-label">Facts:</span> ${Object.keys(memory.working.facts).length} items</div>
+                            <div class="memory-item"><span class="memory-label">Progress:</span> ${memory.working.progress.length} steps</div>
+                        `;
+                    } else {
+                        workDisplay.innerHTML = '<div class="empty">No active task</div>';
+                    }
+
+                    // Long-term
+                    const ltDisplay = document.getElementById('longTermDisplay');
+                    let ltHtml = '';
+                    if (Object.keys(memory.longTerm.userProfile).length > 0) {
+                        ltHtml += '<div class="memory-item"><span class="memory-label">Profile:</span> ';
+                        ltHtml += Object.keys(memory.longTerm.userProfile).join(', ');
+                        ltHtml += '</div>';
+                    }
+                    if (Object.keys(memory.longTerm.knowledgeBase).length > 0) {
+                        ltHtml += '<div class="memory-item"><span class="memory-label">Knowledge:</span> ';
+                        const domains = Object.keys(memory.longTerm.knowledgeBase);
+                        ltHtml += domains.join(', ');
+                        ltHtml += '</div>';
+                    }
+                    if (ltHtml === '') {
+                        ltDisplay.innerHTML = '<div class="empty">No profile or knowledge</div>';
+                    } else {
+                        ltDisplay.innerHTML = ltHtml;
+                    }
+                });
+            } catch (error) {
+                console.error('Error updating memory display:', error);
+            }
+        }
+
+        async function refreshMemoryDisplay() {
+            await updateMemoryDisplay();
+        }
+
+        async function clearAllMemory() {
+            if (!confirm('Clear ALL memory layers? This cannot be undone.')) return;
+
+            try {
+                await fetch(`${API_BASE}/api/memory/clear-all`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
+                });
+
+                document.getElementById('chatLog').innerHTML = '';
+                document.getElementById('profileName').value = '';
+                document.getElementById('profileRole').value = '';
+                document.getElementById('profileExpertise').value = '';
+                document.getElementById('profilePreferences').value = '';
+                updateMemoryDisplay();
+                alert('All memory cleared!');
+            } catch (error) {
+                alert(`Error: ${error.message}`);
+            }
+        }
+
+        async function loadDemo(caseNum) {
+            document.getElementById('demoInfo').style.display = 'block';
+            document.getElementById('demoProgress').innerHTML = '<p><span class="loading"></span> Running demo case ' + caseNum + '...</p>';
+
+            try {
+                const response = await fetch(`${API_BASE}/api/demo/run`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ case: caseNum })
+                });
+
+                const data = await response.json();
+
+                if (data.error) {
+                    document.getElementById('demoProgress').innerHTML = `<p>Error: ${data.error}</p>`;
+                    return;
+                }
+
+                // Clear and rebuild chat log
+                document.getElementById('chatLog').innerHTML = '';
+
+                // Process results
+                for (const result of data.results) {
+                    if (result.type === 'chat') {
+                        appendMessage('user', result.user);
+                        if (result.error) {
+                            appendMessage('assistant', `Error: ${result.error}`);
+                        } else {
+                            appendMessage('assistant', result.assistant);
+                        }
+                    }
+                }
+
+                document.getElementById('demoProgress').innerHTML = `<p>✅ Demo complete! (${data.results.length} steps)</p>`;
+                updateMemoryDisplay();
+            } catch (error) {
+                document.getElementById('demoProgress').innerHTML = `<p>Error: ${error.message}</p>`;
+            }
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendMessage();
+            }
+        }
+
+        function showTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+
+            // Show selected tab
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        // Recording functions
+        async function toggleRecord() {
+            const btn = document.getElementById('recordBtn');
+            const status = document.getElementById('recordStatus');
+
+            if (btn.textContent === 'Record') {
+                try {
+                    const response = await fetch(`${API_BASE}/api/record/start`, { method: 'POST' });
+                    if (response.ok) {
+                        btn.textContent = 'Stop';
+                        btn.classList.remove('btn-primary');
+                        btn.classList.add('btn-danger');
+                        status.textContent = 'Recording...';
+                    }
+                } catch (error) {
+                    status.textContent = `Error: ${error.message}`;
+                }
+            } else {
+                try {
+                    const response = await fetch(`${API_BASE}/api/record/stop`, { method: 'POST' });
+                    if (response.ok) {
+                        btn.textContent = 'Record';
+                        btn.classList.remove('btn-danger');
+                        btn.classList.add('btn-primary');
+                        document.getElementById('uploadBtn').style.display = 'inline-block';
+                        status.textContent = 'Stopped. Ready to upload.';
+                    }
+                } catch (error) {
+                    status.textContent = `Error: ${error.message}`;
+                }
+            }
+        }
+
+        async function uploadVideo() {
+            const status = document.getElementById('recordStatus');
+            status.textContent = 'Uploading...';
+
+            try {
+                const response = await fetch(`${API_BASE}/api/upload`, { method: 'POST' });
+                const data = await response.json();
+
+                if (data.videoLink) {
+                    status.innerHTML = `✅ Uploaded! <a href="${data.videoLink}" target="_blank">View video</a>`;
+                } else {
+                    status.textContent = 'Upload completed';
+                }
+            } catch (error) {
+                status.textContent = `Error: ${error.message}`;
+            }
+        }
+
+        // Initial setup
+        updateMemoryDisplay();
+    </script>
+</body>
+</html>
