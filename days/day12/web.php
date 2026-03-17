@@ -415,8 +415,8 @@ class PersonalizedAgent extends MemoryModel
 
 $env = loadEnv(__DIR__ . '/../../.env');
 
-// Verify required env vars
-$required = ['ANTHROPIC_API_KEY'];
+// Verify required env vars for YandexGPT
+$required = ['YANDEX_API_KEY', 'YANDEX_FOLDER_ID'];
 foreach ($required as $key) {
     if (empty($env[$key])) {
         http_response_code(500);
@@ -426,10 +426,9 @@ foreach ($required as $key) {
 
 $agent = new PersonalizedAgent();
 $client = new LLMClient(
-    $env['ANTHROPIC_API_KEY'],
-    $env['DEEPSEEK_API_KEY'] ?? '',
-    $env['YANDEX_API_KEY'] ?? '',
-    $env['YANDEX_FOLDER_ID'] ?? ''
+    'yandexgpt',
+    $env['YANDEX_API_KEY'],
+    $env['YANDEX_FOLDER_ID']
 );
 
 $method = $_SERVER['REQUEST_METHOD'];
