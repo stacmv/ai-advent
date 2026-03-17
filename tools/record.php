@@ -50,12 +50,17 @@ if (!$day || !ctype_digit($day) || (int)$day < 1) {
 }
 
 $cliFile = __DIR__ . "/../days/day{$day}/cli.php";
+$webFile = __DIR__ . "/../days/day{$day}/web.php";
 $demoCasesFile = __DIR__ . "/../days/day{$day}/demo_cases.php";
 
 if (!file_exists($demoCasesFile)) {
     echo "Error: Demo cases file not found: $demoCasesFile\n";
     exit(1);
 }
+
+// Detect if this is a CLI or web-based day
+$isCli = file_exists($cliFile);
+$isWeb = file_exists($webFile);
 
 require $demoCasesFile;
 
@@ -71,23 +76,78 @@ echo "[1/4] Measuring demo duration (dry run)...\n";
 
 $dryStart = microtime(true);
 
-foreach ($demoCases as $idx => $case) {
-    $caseNum = $idx + 1;
-    echo "   Running case {$caseNum}/" . count($demoCases) . "...\r";
+if ($isCli) {
+    // CLI-based day: run via PHP
+    foreach ($demoCases as $idx => $case) {
+        $caseNum = $idx + 1;
+        echo "   Running case {$caseNum}/" . count($demoCases) . "...\r";
 
-    $process = new Process(['php', $cliFile, "--case={$caseNum}"]);
-    $process->setTimeout(120);
-    $process->setEnv($env);
-    $process->run();
+        $process = new Process(['php', $cliFile, "--case={$caseNum}"]);
+        $process->setTimeout(120);
+        $process->setEnv($env);
+        $process->run();
 
-    if (!$process->isSuccessful()) {
-        echo "\n[-] Case {$caseNum} failed: " . $process->getErrorOutput() . "\n";
+        if (!$process->isSuccessful()) {
+            echo "\n[-] Case {$caseNum} failed: " . $process->getErrorOutput() . "\n";
+            exit(1);
+        }
+
+        if ($idx < count($demoCases) - 1) {
+            sleep(3);
+        }
+    }
+} elseif ($isWeb) {
+    // Web-based day: start server, call API endpoints
+    echo "   Starting web server...\n";
+
+    // Start the web server
+    $serverProcess = new Process(['php', 'tools/serve.php']);
+    $serverProcess->setTimeout(300);
+    $serverProcess->start();
+    sleep(3);
+
+    // Get port from .server.port file
+    $port = @file_get_contents(__DIR__ . '/../.server.port');
+    if (!$port) {
+        echo "[-] Failed to get server port\n";
+        $serverProcess->stop();
         exit(1);
     }
+    $port = trim($port);
 
-    if ($idx < count($demoCases) - 1) {
-        sleep(3);
+    // Run demo cases via HTTP API
+    foreach ($demoCases as $idx => $case) {
+        $caseNum = $idx + 1;
+        echo "   Running case {$caseNum}/" . count($demoCases) . "...\r";
+
+        $url = "http://localhost:{$port}/days/day{$day}/api/demo/run";
+        $data = json_encode(['case' => $caseNum]);
+
+        $ctx = stream_context_create([
+            'http' => [
+                'method' => 'POST',
+                'header' => "Content-Type: application/json\r\n",
+                'content' => $data,
+                'timeout' => 120
+            ]
+        ]);
+
+        $response = @file_get_contents($url, false, $ctx);
+        if ($response === false) {
+            echo "\n[-] Case {$caseNum} failed\n";
+            $serverProcess->stop();
+            exit(1);
+        }
+
+        if ($idx < count($demoCases) - 1) {
+            sleep(3);
+        }
     }
+
+    $serverProcess->stop();
+} else {
+    echo "[-] Cannot find CLI or web file for day {$day}\n";
+    exit(1);
 }
 
 $dryDuration = microtime(true) - $dryStart;
@@ -152,25 +212,71 @@ $recordProcess->setTimeout($recordDuration + 30);
 $recordProcess->start();
 sleep(2);
 
-// Run demo cases (recorded this time)
-foreach ($demoCases as $idx => $case) {
-    $caseNum = $idx + 1;
-    echo "   [Case {$caseNum}] {$case['name']}\n";
+// Step 3b: Run demo cases (recorded this time)
+if ($isCli) {
+    // CLI-based day
+    foreach ($demoCases as $idx => $case) {
+        $caseNum = $idx + 1;
+        echo "   [Case {$caseNum}] {$case['name']}\n";
 
-    $process = new Process(['php', $cliFile, "--case={$caseNum}"]);
-    $process->setTimeout(120);
-    $process->setEnv($env);
-    $process->run();
+        $process = new Process(['php', $cliFile, "--case={$caseNum}"]);
+        $process->setTimeout(120);
+        $process->setEnv($env);
+        $process->run();
 
-    echo $process->getOutput();
+        echo $process->getOutput();
 
-    if (!$process->isSuccessful()) {
-        echo "   Warning: Case {$caseNum} failed: " . $process->getErrorOutput() . "\n";
+        if (!$process->isSuccessful()) {
+            echo "   Warning: Case {$caseNum} failed: " . $process->getErrorOutput() . "\n";
+        }
+
+        if ($idx < count($demoCases) - 1) {
+            sleep(3);
+        }
+    }
+} elseif ($isWeb) {
+    // Web-based day: start server and run API calls
+    echo "   Starting web server...\n";
+
+    $serverProcess = new Process(['php', 'tools/serve.php']);
+    $serverProcess->setTimeout(300);
+    $serverProcess->start();
+    sleep(3);
+
+    $port = @file_get_contents(__DIR__ . '/../.server.port');
+    if (!$port) {
+        echo "   [-] Failed to get server port\n";
+        $serverProcess->stop();
+        $recordProcess->stop();
+        exit(1);
+    }
+    $port = trim($port);
+
+    // Run demo cases via HTTP API
+    foreach ($demoCases as $idx => $case) {
+        $caseNum = $idx + 1;
+        echo "   [Case {$caseNum}] {$case['name']}\n";
+
+        $url = "http://localhost:{$port}/days/day{$day}/api/demo/run";
+        $data = json_encode(['case' => $caseNum]);
+
+        $ctx = stream_context_create([
+            'http' => [
+                'method' => 'POST',
+                'header' => "Content-Type: application/json\r\n",
+                'content' => $data,
+                'timeout' => 120
+            ]
+        ]);
+
+        @file_get_contents($url, false, $ctx);
+
+        if ($idx < count($demoCases) - 1) {
+            sleep(3);
+        }
     }
 
-    if ($idx < count($demoCases) - 1) {
-        sleep(3);
-    }
+    $serverProcess->stop();
 }
 
 // Wait for ffmpeg to finish
