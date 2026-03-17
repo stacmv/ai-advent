@@ -1,8 +1,8 @@
-.PHONY: help install lint test demo record upload clean setup get-token next-day
+.PHONY: help install lint test demo record upload clean setup get-token next-day up
 
 help:
 	@echo ""
-	@echo "*** AI ADVENT - DAY 9: CONTEXT COMPRESSION WITH SUMMARY ***"
+	@echo "*** AI ADVENT - DAY 11: ASSISTANT MEMORY MODEL ***"
 	@echo "=========================================="
 	@echo ""
 	@echo "[*] Available commands:"
@@ -16,15 +16,15 @@ help:
 	@echo "    make lint             Check code style (PSR-12)"
 	@echo ""
 	@echo "  Running:"
-	@echo "    make demo             Run Day 9 demo"
-	@echo "    make test             Run Day 9 interactively"
+	@echo "    make up               Start web server (localhost:8080)"
+	@echo "    make demo             Run Day 11 demo via API"
 	@echo ""
 	@echo "  Recording & Upload:"
 	@echo "    make record           Start screen recording and run demo"
 	@echo "    make upload           Upload latest video for this day"
 	@echo ""
 	@echo "  Bootstrap:"
-	@echo "    make next-day N=6     Bootstrap next day branch"
+	@echo "    make next-day N=12    Bootstrap next day branch"
 	@echo ""
 	@echo "  Utilities:"
 	@echo "    make clean            Remove recordings directory"
@@ -48,21 +48,21 @@ get-token:
 lint:
 	composer run lint
 
-test:
-	@echo "Running Day 9 CLI (interactive mode)..."
-	php days/day9/cli.php
+up:
+	@echo "Starting web server on localhost:8080..."
+	php -S localhost:8080 -t . days/day11/web.php
 
 demo:
-	@echo "Running Day 9 demo..."
-	php days/day9/cli.php --case=1
+	@echo "Running Day 11 demo..."
+	php -r "$$_SERVER['REQUEST_METHOD']='POST'; $$_SERVER['REQUEST_URI']='/days/day11/api/demo/run'; $$_SERVER['CONTENT_TYPE']='application/json'; \$$_GET['case']=1; include 'days/day11/web.php';"
 
 record:
-	@echo "Starting screen recording for Day 9 demo..."
-	php tools/record.php --day=9
+	@echo "Starting screen recording for Day 11 demo..."
+	php tools/record.php --day=11
 
 upload:
-	@echo "Uploading latest Day 9 video..."
-	php tools/upload_latest.php 9
+	@echo "Uploading latest Day 11 video..."
+	php tools/upload_latest.php 11
 
 next-day:
 	@if [ -z "$(N)" ]; then echo "Usage: make next-day N=<day_number> [T=\"Title\"]"; exit 1; fi
