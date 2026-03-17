@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Day 12: Personalized Assistant</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background: white;
+            border-bottom: 2px solid #ddd;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+
+        h1 {
+            margin-bottom: 10px;
+            color: #1a73e8;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+        }
+
+        button, .button {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: #1a73e8;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #1557b0;
+        }
+
+        .btn-secondary {
+            background: #34a853;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #2d8e47;
+        }
+
+        .btn-danger {
+            background: #ea4335;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c5221f;
+        }
+
+        .btn-demo {
+            background: #9c27b0;
+            color: white;
+        }
+
+        .btn-demo:hover {
+            background: #7b1fa2;
+        }
+
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 0;
+            border-bottom: 2px solid #ddd;
+            margin-bottom: 20px;
+            background: white;
+            border-radius: 4px 4px 0 0;
+        }
+
+        .tab-btn {
+            padding: 12px 20px;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            font-weight: 500;
+            transition: all 0.2s;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .tab-btn.active {
+            color: #1a73e8;
+            border-bottom-color: #1a73e8;
+        }
+
+        .tab-content {
+            display: none;
+            background: white;
+            padding: 20px;
+            border-radius: 0 4px 4px 4px;
+            border: 1px solid #ddd;
+            border-top: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            color: #666;
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            font-family: inherit;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #1a73e8;
+            box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.1);
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .profile-form {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+
+        .profile-form h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .profile-list {
+            margin-top: 20px;
+        }
+
+        .profile-list h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .profile-item {
+            background: #f9f9f9;
+            padding: 12px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid #ddd;
+        }
+
+        .profile-item-info {
+            flex: 1;
+        }
+
+        .profile-item-name {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 4px;
+        }
+
+        .profile-item-meta {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .profile-item-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .preset-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .preset-btn {
+            background: #f0f0f0;
+            color: #333;
+            padding: 10px 14px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+
+        .preset-btn:hover {
+            background: #1a73e8;
+            color: white;
+            border-color: #1a73e8;
+        }
+
+        .chat-container {
+            display: flex;
+            flex-direction: column;
+            background: #f9f9f9;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            overflow: hidden;
+        }
+
+        .active-profile-badge {
+            padding: 10px 15px;
+            background: #e8f0fe;
+            border-bottom: 1px solid #ddd;
+            color: #1a73e8;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .chat-log {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            min-height: 400px;
+            max-height: 500px;
+            background: #fafafa;
+        }
+
+        .chat-message {
+            margin-bottom: 15px;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message-user {
+            text-align: right;
+        }
+
+        .message-bubble {
+            display: inline-block;
+            padding: 12px 16px;
+            border-radius: 12px;
+            max-width: 70%;
+            word-wrap: break-word;
+        }
+
+        .message-user .message-bubble {
+            background: #1a73e8;
+            color: white;
+        }
+
+        .message-assistant .message-bubble {
+            background: #e8e8e8;
+            color: #333;
+        }
+
+        .chat-input-area {
+            display: flex;
+            gap: 10px;
+            padding: 15px;
+            border-top: 1px solid #ddd;
+            background: white;
+        }
+
+        .chat-input-area input {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .chat-input-area input:focus {
+            outline: none;
+            border-color: #1a73e8;
+            box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.1);
+        }
+
+        .compare-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .compare-input {
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            grid-column: 1 / -1;
+            margin-bottom: 15px;
+        }
+
+        .compare-input .button-group {
+            gap: 10px;
+        }
+
+        .compare-panel {
+            background: #f9f9f9;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            overflow: hidden;
+        }
+
+        .compare-panel-header {
+            padding: 15px;
+            background: #e8f0fe;
+            border-bottom: 1px solid #ddd;
+            font-weight: 600;
+            color: #1a73e8;
+            font-size: 14px;
+        }
+
+        .compare-panel-header.b {
+            background: #e6f4ea;
+            color: #34a853;
+        }
+
+        .compare-panel-content {
+            padding: 15px;
+            min-height: 300px;
+            max-height: 500px;
+            overflow-y: auto;
+            line-height: 1.6;
+            color: #333;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border: 2px solid #ddd;
+            border-top-color: #1a73e8;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .status {
+            padding: 10px 15px;
+            background: #f0f0f0;
+            font-size: 12px;
+            text-align: center;
+            color: #666;
+        }
+
+        .demo-info {
+            background: white;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+            border-left: 4px solid #9c27b0;
+            display: none;
+        }
+
+        .demo-info.active {
+            display: block;
+        }
+
+        .demo-progress {
+            font-size: 13px;
+            color: #666;
+        }
+
+        .demo-step {
+            padding: 10px;
+            margin: 8px 0;
+            background: #f9f9f9;
+            border-radius: 3px;
+            border-left: 3px solid #9c27b0;
+            font-size: 13px;
+        }
+
+        .demo-step.question {
+            border-left-color: #1a73e8;
+        }
+
+        .demo-step.response {
+            border-left-color: #34a853;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎯 Day 12: Personalized Assistant</h1>
+            <p class="subtitle">Structured profiles with explicit personalization. See how the same question gets different answers from different personas.</p>
+
+            <div class="button-group">
+                <button class="btn-demo" onclick="loadDemo(1)">Demo 1: Expertise Impact</button>
+                <button class="btn-demo" onclick="loadDemo(2)">Demo 2: Format Preferences</button>
+                <button class="btn-demo" onclick="loadDemo(3)">Demo 3: Restrictions & Includes</button>
+                <button class="btn-secondary" onclick="clearMemory()">Clear Chat</button>
+            </div>
+        </header>
+
+        <div class="demo-info" id="demoInfo">
+            <div id="demoProgress"></div>
+        </div>
+
+        <div class="tabs">
+            <button class="tab-btn active" onclick="showTab('profile-builder')">Profile Builder</button>
+            <button class="tab-btn" onclick="showTab('chat')">Chat</button>
+            <button class="tab-btn" onclick="showTab('compare')">Compare</button>
+        </div>
+
+        <!-- TAB 1: Profile Builder -->
+        <div id="profile-builder" class="tab-content active">
+            <div class="grid-2">
+                <!-- Left: Form -->
+                <div>
+                    <div class="profile-form">
+                        <h3>Create or Edit Profile</h3>
+
+                        <div class="form-group">
+                            <label>Profile Name</label>
+                            <input type="text" id="profileName" placeholder="e.g., Alex - Senior Engineer">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Role</label>
+                            <input type="text" id="profileRole" placeholder="e.g., Senior Software Engineer">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Expertise Level</label>
+                            <select id="profileExpertise">
+                                <option value="beginner">Beginner - Explain from scratch</option>
+                                <option value="intermediate">Intermediate - Assume basics</option>
+                                <option value="expert">Expert - Skip fundamentals</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Communication Style</label>
+                            <select id="profileStyle">
+                                <option value="formal">Formal - Professional language</option>
+                                <option value="casual">Casual - Friendly and conversational</option>
+                                <option value="technical">Technical - Use precise jargon</option>
+                                <option value="friendly">Friendly - Warm and encouraging</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Response Format</label>
+                            <select id="profileFormat">
+                                <option value="prose">Prose - Flowing paragraphs</option>
+                                <option value="bullets">Bullets - Structured lists</option>
+                                <option value="code_first">Code First - Examples then explanation</option>
+                                <option value="concise">Concise - Brief and direct</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Response Depth</label>
+                            <select id="profileDepth">
+                                <option value="brief">Brief - To the point</option>
+                                <option value="standard">Standard - Balanced</option>
+                                <option value="detailed">Detailed - Comprehensive</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Language</label>
+                            <select id="profileLanguage">
+                                <option value="en">English</option>
+                                <option value="es">Spanish</option>
+                                <option value="fr">French</option>
+                                <option value="de">German</option>
+                                <option value="ru">Russian</option>
+                                <option value="zh">Chinese</option>
+                                <option value="ja">Japanese</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Topics to Avoid (comma-separated)</label>
+                            <textarea id="profileAvoid" placeholder="e.g., jargon, oversimplifications, technical details"></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Always Include (comma-separated)</label>
+                            <textarea id="profileInclude" placeholder="e.g., examples, edge cases, performance notes"></textarea>
+                        </div>
+
+                        <button class="btn-secondary" style="width: 100%;" onclick="saveProfile()">Save Profile</button>
+                    </div>
+                </div>
+
+                <!-- Right: Saved Profiles -->
+                <div>
+                    <div class="profile-list">
+                        <h3>Saved Profiles</h3>
+                        <div id="profilesList"></div>
+
+                        <div class="profile-list" style="margin-top: 30px;">
+                            <h3>Quick Presets</h3>
+                            <div class="preset-buttons">
+                                <button class="preset-btn" onclick="loadPreset('Beginner')">Load Beginner</button>
+                                <button class="preset-btn" onclick="loadPreset('Expert')">Load Expert</button>
+                                <button class="preset-btn" onclick="loadPreset('Business')">Load Business</button>
+                                <button class="preset-btn" onclick="loadPreset('Casual')">Load Casual</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 2: Chat -->
+        <div id="chat" class="tab-content">
+            <div class="chat-container">
+                <div class="active-profile-badge" id="activeBadge">No profile loaded</div>
+                <div class="chat-log" id="chatLog"></div>
+                <div class="chat-input-area">
+                    <input type="text" id="messageInput" placeholder="Type your message..." onkeypress="handleKeyPress(event)">
+                    <button class="btn-primary" onclick="sendMessage()">Send</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 3: Compare -->
+        <div id="compare" class="tab-content">
+            <div class="compare-input">
+                <div class="form-group">
+                    <label>Question</label>
+                    <textarea id="compareQuestion" style="min-height: 60px;" placeholder="Ask a question to see how different profiles respond..."></textarea>
+                </div>
+
+                <div class="grid-2" style="margin-bottom: 15px;">
+                    <div class="form-group">
+                        <label>Profile A</label>
+                        <select id="profileASelect"></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Profile B</label>
+                        <select id="profileBSelect"></select>
+                    </div>
+                </div>
+
+                <div class="button-group">
+                    <button class="btn-primary" onclick="runComparison()">Compare Profiles</button>
+                </div>
+            </div>
+
+            <div id="comparisonResults" style="display: none;">
+                <div class="compare-section">
+                    <div class="compare-panel">
+                        <div class="compare-panel-header" id="panelAHeader"></div>
+                        <div class="compare-panel-content" id="panelAContent"></div>
+                    </div>
+                    <div class="compare-panel">
+                        <div class="compare-panel-header b" id="panelBHeader"></div>
+                        <div class="compare-panel-content" id="panelBContent"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '/days/day12';
+
+        // Tab management
+        function showTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+
+            // Load profiles when switching to compare tab
+            if (tabName === 'compare') {
+                loadProfilesForComparison();
+            }
+        }
+
+        // Profile management
+        async function saveProfile() {
+            const name = document.getElementById('profileName').value.trim();
+            if (!name) {
+                alert('Please enter a profile name');
+                return;
+            }
+
+            const avoid = document.getElementById('profileAvoid').value
+                .split(',')
+                .map(s => s.trim())
+                .filter(s => s);
+            const include = document.getElementById('profileInclude').value
+                .split(',')
+                .map(s => s.trim())
+                .filter(s => s);
+
+            const data = {
+                role: document.getElementById('profileRole').value,
+                expertise: document.getElementById('profileExpertise').value,
+                style: document.getElementById('profileStyle').value,
+                format: document.getElementById('profileFormat').value,
+                depth: document.getElementById('profileDepth').value,
+                language: document.getElementById('profileLanguage').value,
+                avoid: avoid,
+                always_include: include
+            };
+
+            try {
+                const response = await fetch(`${API_BASE}/api/profiles/save`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, data })
+                });
+
+                if (!response.ok) throw new Error('Failed to save profile');
+
+                alert('Profile saved!');
+                refreshProfilesList();
+                clearProfileForm();
+            } catch (error) {
+                alert(`Error: ${error.message}`);
+            }
+        }
+
+        async function loadProfile(name) {
+            try {
+                const response = await fetch(`${API_BASE}/api/profiles/load`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name })
+                });
+
+                if (!response.ok) throw new Error('Failed to load profile');
+
+                const data = await response.json();
+                const profile = data.profile;
+
+                // Update UI to show active profile
+                document.getElementById('activeBadge').textContent = `Active Profile: ${profile.name} (${profile.expertise}, ${profile.style})`;
+
+                alert(`Profile "${name}" loaded!`);
+            } catch (error) {
+                alert(`Error: ${error.message}`);
+            }
+        }
+
+        async function deleteProfile(name) {
+            if (!confirm(`Delete profile "${name}"?`)) return;
+
+            try {
+                const response = await fetch(`${API_BASE}/api/profiles/delete`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name })
+                });
+
+                if (!response.ok) throw new Error('Failed to delete profile');
+
+                refreshProfilesList();
+            } catch (error) {
+                alert(`Error: ${error.message}`);
+            }
+        }
+
+        async function loadPreset(presetName) {
+            await loadProfile(presetName);
+        }
+
+        async function refreshProfilesList() {
+            try {
+                const response = await fetch(`${API_BASE}/api/profiles`);
+                const profiles = await response.json();
+
+                const list = document.getElementById('profilesList');
+                list.innerHTML = '';
+
+                Object.values(profiles).forEach(profile => {
+                    const item = document.createElement('div');
+                    item.className = 'profile-item';
+                    item.innerHTML = `
+                        <div class="profile-item-info">
+                            <div class="profile-item-name">${profile.name}</div>
+                            <div class="profile-item-meta">${profile.expertise} • ${profile.style} • ${profile.format}</div>
+                        </div>
+                        <div class="profile-item-actions">
+                            <button class="btn-primary btn-small" onclick="loadProfile('${profile.name}')">Load</button>
+                            <button class="btn-danger btn-small" onclick="deleteProfile('${profile.name}')">Delete</button>
+                        </div>
+                    `;
+                    list.appendChild(item);
+                });
+            } catch (error) {
+                console.error('Error loading profiles:', error);
+            }
+        }
+
+        async function loadProfilesForComparison() {
+            try {
+                const response = await fetch(`${API_BASE}/api/profiles`);
+                const profiles = await response.json();
+
+                const selectA = document.getElementById('profileASelect');
+                const selectB = document.getElementById('profileBSelect');
+
+                selectA.innerHTML = '';
+                selectB.innerHTML = '';
+
+                Object.keys(profiles).forEach(name => {
+                    const optionA = document.createElement('option');
+                    optionA.value = name;
+                    optionA.textContent = name;
+                    selectA.appendChild(optionA);
+
+                    const optionB = document.createElement('option');
+                    optionB.value = name;
+                    optionB.textContent = name;
+                    selectB.appendChild(optionB);
+                });
+
+                // Set defaults
+                if (Object.keys(profiles).length >= 2) {
+                    selectA.value = Object.keys(profiles)[0];
+                    selectB.value = Object.keys(profiles)[1];
+                }
+            } catch (error) {
+                console.error('Error loading profiles:', error);
+            }
+        }
+
+        function clearProfileForm() {
+            document.getElementById('profileName').value = '';
+            document.getElementById('profileRole').value = '';
+            document.getElementById('profileExpertise').value = 'beginner';
+            document.getElementById('profileStyle').value = 'friendly';
+            document.getElementById('profileFormat').value = 'prose';
+            document.getElementById('profileDepth').value = 'standard';
+            document.getElementById('profileLanguage').value = 'en';
+            document.getElementById('profileAvoid').value = '';
+            document.getElementById('profileInclude').value = '';
+        }
+
+        // Chat functions
+        async function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const message = input.value.trim();
+
+            if (!message) return;
+
+            input.value = '';
+            appendMessage('user', message);
+
+            try {
+                const response = await fetch(`${API_BASE}/api/chat`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message })
+                });
+
+                const data = await response.json();
+
+                if (data.error) {
+                    appendMessage('assistant', `Error: ${data.error}`);
+                } else {
+                    appendMessage('assistant', data.response);
+                    if (data.profile) {
+                        document.getElementById('activeBadge').textContent = `Active Profile: ${data.profile}`;
+                    }
+                }
+            } catch (error) {
+                appendMessage('assistant', `Error: ${error.message}`);
+            }
+        }
+
+        function appendMessage(role, text) {
+            const chatLog = document.getElementById('chatLog');
+            const msg = document.createElement('div');
+            msg.className = `chat-message message-${role}`;
+            msg.innerHTML = `<div class="message-bubble">${escapeHtml(text)}</div>`;
+            chatLog.appendChild(msg);
+            chatLog.scrollTop = chatLog.scrollHeight;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendMessage();
+            }
+        }
+
+        async function clearMemory() {
+            if (!confirm('Clear chat history?')) return;
+
+            try {
+                await fetch(`${API_BASE}/api/memory/clear`, { method: 'POST' });
+                document.getElementById('chatLog').innerHTML = '';
+            } catch (error) {
+                alert(`Error: ${error.message}`);
+            }
+        }
+
+        // Compare function
+        async function runComparison() {
+            const question = document.getElementById('compareQuestion').value.trim();
+            const profileA = document.getElementById('profileASelect').value;
+            const profileB = document.getElementById('profileBSelect').value;
+
+            if (!question) {
+                alert('Please enter a question');
+                return;
+            }
+
+            if (!profileA || !profileB) {
+                alert('Please select both profiles');
+                return;
+            }
+
+            document.getElementById('panelAContent').innerHTML = '<p><span class="loading"></span> Loading...</p>';
+            document.getElementById('panelBContent').innerHTML = '<p><span class="loading"></span> Loading...</p>';
+            document.getElementById('comparisonResults').style.display = 'block';
+
+            try {
+                const response = await fetch(`${API_BASE}/api/compare`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: question, profileA, profileB })
+                });
+
+                const data = await response.json();
+
+                if (data.error) {
+                    document.getElementById('panelAContent').innerHTML = `<p>Error: ${data.error}</p>`;
+                    document.getElementById('panelBContent').innerHTML = `<p>Error: ${data.error}</p>`;
+                } else {
+                    document.getElementById('panelAHeader').textContent = `📘 ${data.profileA}`;
+                    document.getElementById('panelBHeader').textContent = `📗 ${data.profileB}`;
+                    document.getElementById('panelAContent').innerHTML = escapeHtml(data.responseA).replace(/\n/g, '<br>');
+                    document.getElementById('panelBContent').innerHTML = escapeHtml(data.responseB).replace(/\n/g, '<br>');
+                }
+            } catch (error) {
+                document.getElementById('panelAContent').innerHTML = `<p>Error: ${error.message}</p>`;
+                document.getElementById('panelBContent').innerHTML = `<p>Error: ${error.message}</p>`;
+            }
+        }
+
+        // Demo runner
+        async function loadDemo(caseNum) {
+            const demoInfo = document.getElementById('demoInfo');
+            const demoProgress = document.getElementById('demoProgress');
+
+            demoInfo.classList.add('active');
+            demoProgress.innerHTML = '<p><span class="loading"></span> Running demo case ' + caseNum + '...</p>';
+
+            try {
+                const response = await fetch(`${API_BASE}/api/demo/run`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ case: caseNum })
+                });
+
+                const data = await response.json();
+
+                if (data.error) {
+                    demoProgress.innerHTML = `<p>Error: ${data.error}</p>`;
+                    return;
+                }
+
+                let html = '<div class="demo-progress">';
+                for (const result of data.results) {
+                    if (result.type === 'profile') {
+                        html += `<div class="demo-step">👤 Loaded profile: <strong>${result.name}</strong> (${result.profile.expertise}, ${result.profile.style})</div>`;
+                    } else if (result.type === 'question') {
+                        html += `<div class="demo-step question">❓ <strong>[${result.profile}]</strong> ${result.question}</div>`;
+                        if (result.response) {
+                            const shortResp = result.response.substring(0, 150) + (result.response.length > 150 ? '...' : '');
+                            html += `<div class="demo-step response">✓ ${shortResp}</div>`;
+                        } else if (result.error) {
+                            html += `<div class="demo-step response">✗ Error: ${result.error}</div>`;
+                        }
+                    } else if (result.type === 'compare') {
+                        html += `<div class="demo-step question">🔀 Comparing: ${result.question}</div>`;
+                        const respA = result.responseA.substring(0, 100) + (result.responseA.length > 100 ? '...' : '');
+                        const respB = result.responseB.substring(0, 100) + (result.responseB.length > 100 ? '...' : '');
+                        html += `<div class="demo-step response">📘 [${result.profileA}]: ${respA}</div>`;
+                        html += `<div class="demo-step response">📗 [${result.profileB}]: ${respB}</div>`;
+                    }
+                }
+                html += '</div>';
+                demoProgress.innerHTML = html;
+            } catch (error) {
+                demoProgress.innerHTML = `<p>Error: ${error.message}</p>`;
+            }
+        }
+
+        // Initialize
+        refreshProfilesList();
+    </script>
+</body>
+</html>
