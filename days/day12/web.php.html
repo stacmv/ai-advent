@@ -450,6 +450,63 @@
         .demo-step.response {
             border-left-color: #34a853;
         }
+
+        .upload-panel {
+            background: #e8f0fe;
+            border-left: 4px solid #1a73e8;
+            padding: 12px 16px;
+            margin-bottom: 12px;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .upload-bar-wrap {
+            background: #ddd;
+            border-radius: 2px;
+            height: 8px;
+            overflow: hidden;
+            margin: 6px 0;
+        }
+
+        .upload-bar-fill {
+            background: #1a73e8;
+            height: 100%;
+            width: 0%;
+        }
+
+        .upload-bar-fill.done {
+            background: #34a853;
+            animation: none !important;
+        }
+
+        .upload-bar-fill.error {
+            background: #ea4335;
+            animation: none !important;
+        }
+
+        @keyframes upload-pulse {
+            0%, 100% { opacity: 0.4; }
+            50% { opacity: 1; }
+        }
+
+        .upload-stats {
+            color: #666;
+            font-size: 12px;
+        }
+
+        .upload-link {
+            color: #1a73e8;
+            text-decoration: none;
+            word-break: break-all;
+        }
+
+        .upload-link:hover {
+            text-decoration: underline;
+        }
+
+        .upload-error {
+            color: #ea4335;
+        }
     </style>
 </head>
 <body>
@@ -462,6 +519,10 @@
                 <button class="btn-demo" onclick="loadDemo(1)">Demo 1: Expertise Impact</button>
                 <button class="btn-demo" onclick="loadDemo(2)">Demo 2: Format Preferences</button>
                 <button class="btn-demo" onclick="loadDemo(3)">Demo 3: Restrictions & Includes</button>
+                <button class="btn-secondary" onclick="startRecording()">Record</button>
+                <button class="btn-secondary" onclick="stopRecording()" id="stop-record-btn" style="display:none;background:#ea4335">Stop Recording</button>
+                <button class="btn-secondary" onclick="uploadVideo()">Upload</button>
+                <button class="btn-secondary" onclick="resetUpload()" id="reset-upload-btn" style="display:none">Reset Upload</button>
                 <button class="btn-secondary" onclick="clearMemory()">Clear Chat</button>
             </div>
         </header>
@@ -969,6 +1030,208 @@
 
         // Initialize
         refreshProfilesList();
+
+        // ===== Record/Upload Functionality =====
+        let recordStartTime = null;
+        let uploadPanelEl = null;
+        let uploadStartTime = null;
+        let uploadTimerInterval = null;
+
+        function formatElapsed(s) {
+            const m = Math.floor(s / 60);
+            return m + ':' + (s % 60 < 10 ? '0' : '') + (s % 60);
+        }
+
+        function formatBytes(bytes) {
+            const units = ['B', 'KB', 'MB', 'GB'];
+            bytes = Math.max(bytes, 0);
+            const pow = Math.floor((bytes ? Math.log(bytes) : 0) / Math.log(1024));
+            const p = Math.min(pow, units.length - 1);
+            bytes /= Math.pow(1024, p);
+            return Math.round(bytes * 100) / 100 + ' ' + units[p];
+        }
+
+        async function startRecording() {
+            const recordBtn = document.querySelector('[onclick="startRecording()"]');
+            recordBtn.disabled = true;
+            try {
+                const res = await fetch('/api/record/start', { method: 'POST' });
+                const data = await res.json();
+
+                if (data.error) {
+                    demoProgress.innerHTML = '<p style="color:red">Recording failed: ' + data.error + '</p>';
+                    recordBtn.disabled = false;
+                    return;
+                }
+
+                recordStartTime = Date.now();
+                recordBtn.style.display = 'none';
+                document.getElementById('stop-record-btn').style.display = 'inline-block';
+                demoProgress.innerHTML = '<p>🎬 ' + data.message + '</p><p style="color:#666;font-size:12px">This runs all demo cases automatically...</p>';
+
+                // Poll for recording completion
+                const pollInterval = setInterval(async () => {
+                    try {
+                        const sr = await fetch('/api/record/status');
+                        const sd = await sr.json();
+
+                        if (sd.status === 'has_recording') {
+                            clearInterval(pollInterval);
+                            document.getElementById('stop-record-btn').style.display = 'none';
+                            recordBtn.style.display = 'inline-block';
+                            recordBtn.disabled = false;
+                            const elapsed = Math.floor((Date.now() - recordStartTime) / 1000);
+                            demoProgress.innerHTML = '<p>✓ Recording complete!</p><p>' + sd.message + '</p><p style="color:#666;font-size:12px">Time: ' + formatElapsed(elapsed) + '</p>';
+                        }
+                    } catch (e) {
+                        console.error('Status poll error:', e);
+                    }
+                }, 2000);
+            } catch (e) {
+                demoProgress.innerHTML = '<p style="color:red">Error: ' + e.message + '</p>';
+                recordBtn.disabled = false;
+            }
+        }
+
+        async function stopRecording() {
+            // Recording runs to completion automatically, just show status
+            try {
+                const res = await fetch('/api/record/status');
+                const data = await res.json();
+                document.getElementById('stop-record-btn').style.display = 'none';
+                document.querySelector('[onclick="startRecording()"]').style.display = 'inline-block';
+                demoProgress.innerHTML = '<p>✓ Recording status: ' + data.message + '</p>';
+            } catch (e) {
+                demoProgress.innerHTML = '<p style="color:red">Error: ' + e.message + '</p>';
+            }
+        }
+
+        async function uploadVideo() {
+            const uploadBtn = event.target;
+            uploadBtn.disabled = true;
+            try {
+                const res = await fetch('/api/upload', { method: 'POST' });
+                const data = await res.json();
+
+                if (data.error) {
+                    if (res.status === 409) {
+                        demoProgress.innerHTML = '<p style="color:red">Upload in progress. Click "Reset Upload" to force-clear.</p>';
+                        document.getElementById('reset-upload-btn').style.display = 'inline-block';
+                    } else {
+                        demoProgress.innerHTML = '<p style="color:red">Upload failed: ' + data.error + '</p>';
+                    }
+                    uploadBtn.disabled = false;
+                    return;
+                }
+
+                createUploadPanel(data.fileName, data.fileSizeFormatted || '');
+
+                // Poll for completion
+                const pollInterval = setInterval(async () => {
+                    try {
+                        const sr = await fetch('/api/upload/status');
+                        const sd = await sr.json();
+
+                        if (sd.status === 'done') {
+                            clearInterval(pollInterval);
+                            finishUploadPanel('done', sd);
+                            uploadBtn.disabled = false;
+                        } else if (sd.status === 'error' || sd.status === 'cancelled') {
+                            clearInterval(pollInterval);
+                            finishUploadPanel(sd.status, sd);
+                            uploadBtn.disabled = false;
+                        } else if (sd.status === 'uploading' || sd.status === 'publishing') {
+                            updateUploadPanel(sd);
+                        }
+                    } catch (e) {
+                        console.error('Status poll error:', e);
+                    }
+                }, 1000);
+            } catch (e) {
+                demoProgress.innerHTML = '<p style="color:red">Upload error: ' + e.message + '</p>';
+                uploadBtn.disabled = false;
+            }
+        }
+
+        function createUploadPanel(fileName, fileSize) {
+            if (uploadPanelEl) uploadPanelEl.remove();
+            uploadPanelEl = document.createElement('div');
+            uploadPanelEl.className = 'upload-panel';
+            uploadPanelEl.innerHTML = '<div><strong>Uploading:</strong> ' + fileName + ' (' + fileSize + ')</div>'
+                + '<div class="upload-bar-wrap"><div class="upload-bar-fill"></div></div>'
+                + '<div class="upload-stats">Uploading… 0:00</div>'
+                + '<div class="upload-extra"></div>';
+            demoProgress.appendChild(uploadPanelEl);
+            demoProgress.scrollTop = demoProgress.scrollHeight;
+
+            uploadStartTime = Date.now();
+            const bar = uploadPanelEl.querySelector('.upload-bar-fill');
+            const stats = uploadPanelEl.querySelector('.upload-stats');
+            bar.style.width = '100%';
+            bar.style.animation = 'upload-pulse 1.5s ease-in-out infinite';
+            uploadTimerInterval = setInterval(() => {
+                const elapsed = Math.floor((Date.now() - uploadStartTime) / 1000);
+                stats.textContent = 'Uploading… ' + formatElapsed(elapsed);
+            }, 1000);
+        }
+
+        function updateUploadPanel(data) {
+            if (!uploadPanelEl) return;
+            const stats = uploadPanelEl.querySelector('.upload-stats');
+            const bar = uploadPanelEl.querySelector('.upload-bar-fill');
+
+            if (data.percent !== undefined) {
+                bar.style.width = data.percent + '%';
+                const elapsed = uploadStartTime ? formatElapsed(Math.floor((Date.now() - uploadStartTime) / 1000)) : '--';
+                let text = 'Uploading… ' + data.percent + '% • ' + formatBytes(data.uploaded || 0) + ' of ' + formatBytes(data.fileSize || 0);
+                if (data.speedBps) text += ' • ' + formatBytes(data.speedBps) + '/s';
+                if (data.etaSeconds) text += ' • ETA ' + formatElapsed(data.etaSeconds);
+                stats.textContent = text;
+            }
+        }
+
+        function finishUploadPanel(status, data) {
+            if (uploadTimerInterval) clearInterval(uploadTimerInterval);
+            uploadTimerInterval = null;
+            if (!uploadPanelEl) return;
+            const bar = uploadPanelEl.querySelector('.upload-bar-fill');
+            const stats = uploadPanelEl.querySelector('.upload-stats');
+            const extra = uploadPanelEl.querySelector('.upload-extra');
+            bar.style.animation = 'none';
+            const elapsed = uploadStartTime ? formatElapsed(Math.floor((Date.now() - uploadStartTime) / 1000)) : '--';
+
+            if (status === 'done') {
+                bar.className = 'upload-bar-fill done';
+                bar.style.width = '100%';
+                const codeLink = data.codeLink || 'https://github.com/stacmv/ai-advent/tree/day12';
+                const videoLink = data.videoLink || '(not available)';
+                stats.textContent = 'Upload complete — ' + elapsed;
+                extra.innerHTML = '<div style="margin-top:6px">'
+                    + '<div>Код: <a href="' + codeLink + '" target="_blank" class="upload-link">' + codeLink + '</a></div>'
+                    + '<div>Видео: <a href="' + videoLink + '" target="_blank" class="upload-link">' + videoLink + '</a></div>'
+                    + '</div>';
+            } else if (status === 'error') {
+                bar.className = 'upload-bar-fill error';
+                stats.innerHTML = '<span class="upload-error">Error: ' + (data.error || 'unknown') + '</span>';
+            } else if (status === 'cancelled') {
+                bar.className = 'upload-bar-fill error';
+                stats.innerHTML = '<span class="upload-error">Cancelled</span>';
+            }
+        }
+
+        async function resetUpload() {
+            try {
+                await fetch('/api/upload/reset', { method: 'GET' });
+                if (uploadTimerInterval) clearInterval(uploadTimerInterval);
+                if (uploadPanelEl) uploadPanelEl.remove();
+                uploadPanelEl = null;
+                document.getElementById('reset-upload-btn').style.display = 'none';
+                document.querySelector('[onclick="uploadVideo()"]').disabled = false;
+                demoProgress.innerHTML = '<p>✓ Upload reset.</p>';
+            } catch (e) {
+                demoProgress.innerHTML = '<p style="color:red">Reset failed: ' + e.message + '</p>';
+            }
+        }
     </script>
 </body>
 </html>

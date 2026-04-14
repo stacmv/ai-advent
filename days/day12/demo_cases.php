@@ -1,6 +1,6 @@
 <?php
 
-return [
+$demoCases = [
     // Demo Case 1: Expertise Level Impact
     1 => [
         'name' => 'Expertise Impact: Same Question, Different Depths',
@@ -27,8 +27,8 @@ return [
 
     // Demo Case 3: Restrictions & Includes
     3 => [
-        'name' => 'Personalization Impact: Avoid & Always Include Directives',
-        'description' => 'Compare responses from profiles with different restrictions',
+        'name' => 'Avoid & Always Include: Constraints in Action',
+        'description' => 'See how "avoid" and "always_include" directives shape responses differently. Beginner profile avoids jargon and always includes simple examples. Expert profile uses technical terminology and code examples.',
         'steps' => [
             ['type' => 'compare', 'profileA' => 'Beginner', 'profileB' => 'Expert', 'question' => 'Explain how database indexing works'],
         ]
