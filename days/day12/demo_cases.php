@@ -34,3 +34,5 @@ $demoCases = [
         ]
     ],
 ];
+
+return $demoCases;
