@@ -1,9 +1,9 @@
 <?php
 
-return [
+$demoCases = [
     // Demo Case 1: Profile Impact
     // Shows how user profile (long-term) affects responses to the same question
-    1 => [
+    0 => [
         'name' => 'Profile Impact: Same Question, Different Contexts',
         'description' => 'Set different user profiles and ask the same question to see how long-term memory affects responses',
         'steps' => [
@@ -58,7 +58,7 @@ return [
 
     // Demo Case 2: Task Switching
     // Shows how working memory isolates different tasks
-    2 => [
+    1 => [
         'name' => 'Task Switching: Isolated Working Memory',
         'description' => 'Start different tasks and see how working memory maintains task-specific context',
         'steps' => [
@@ -108,7 +108,7 @@ return [
 
     // Demo Case 3: Knowledge Retention
     // Shows how long-term memory preserves knowledge across sessions
-    3 => [
+    2 => [
         'name' => 'Knowledge Retention: Building Knowledge Base',
         'description' => 'Add knowledge to long-term memory and see how it influences understanding',
         'steps' => [

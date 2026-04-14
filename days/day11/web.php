@@ -397,14 +397,15 @@ if ($method === 'GET' && $path === '/') {
     $input = json_decode(file_get_contents('php://input'), true);
     $caseNum = $input['case'] ?? 1;
 
-    $demoCases = include __DIR__ . '/demo_cases.php';
+    include __DIR__ . '/demo_cases.php';
 
-    if (!isset($demoCases[$caseNum])) {
+    $caseIndex = $caseNum - 1; // Convert 1-based to 0-based indexing
+    if (!isset($demoCases[$caseIndex])) {
         http_response_code(400);
         die(json_encode(['error' => "Demo case $caseNum not found"]));
     }
 
-    $case = $demoCases[$caseNum];
+    $case = $demoCases[$caseIndex];
 
     // Clear memory for fresh start
     $memory->clearAllMemory();
