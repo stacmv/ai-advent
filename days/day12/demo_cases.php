@@ -1,8 +1,8 @@
 <?php
 
 $demoCases = [
-    // Demo Case 1: Expertise Level Impact
-    1 => [
+    // Demo Case 0: Expertise Level Impact
+    0 => [
         'name' => 'Expertise Impact: Same Question, Different Depths',
         'description' => 'Ask about dependency injection with beginner and expert profiles',
         'steps' => [
@@ -13,8 +13,8 @@ $demoCases = [
         ]
     ],
 
-    // Demo Case 2: Format Preferences
-    2 => [
+    // Demo Case 1: Format Preferences
+    1 => [
         'name' => 'Format Preferences: Bullets vs Prose',
         'description' => 'Ask about pagination with different format preferences',
         'steps' => [
@@ -25,8 +25,8 @@ $demoCases = [
         ]
     ],
 
-    // Demo Case 3: Restrictions & Includes
-    3 => [
+    // Demo Case 2: Restrictions & Includes
+    2 => [
         'name' => 'Avoid & Always Include: Constraints in Action',
         'description' => 'See how "avoid" and "always_include" directives shape responses differently. Beginner profile avoids jargon and always includes simple examples. Expert profile uses technical terminology and code examples.',
         'steps' => [

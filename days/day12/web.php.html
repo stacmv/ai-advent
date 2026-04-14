@@ -516,9 +516,9 @@
             <p class="subtitle">Structured profiles with explicit personalization. See how the same question gets different answers from different personas.</p>
 
             <div class="button-group">
-                <button class="btn-demo" onclick="loadDemo(1)">Demo 1: Expertise Impact</button>
-                <button class="btn-demo" onclick="loadDemo(2)">Demo 2: Format Preferences</button>
-                <button class="btn-demo" onclick="loadDemo(3)">Demo 3: Restrictions & Includes</button>
+                <button class="btn-demo" onclick="loadDemo(0)">Demo 1: Expertise Impact</button>
+                <button class="btn-demo" onclick="loadDemo(1)">Demo 2: Format Preferences</button>
+                <button class="btn-demo" onclick="loadDemo(2)">Demo 3: Restrictions & Includes</button>
                 <button class="btn-secondary" onclick="startRecording()">Record</button>
                 <button class="btn-secondary" onclick="stopRecording()" id="stop-record-btn" style="display:none;background:#ea4335">Stop Recording</button>
                 <button class="btn-secondary" onclick="uploadVideo()">Upload</button>
@@ -1066,7 +1066,8 @@
                 }
 
                 recordStartTime = Date.now();
-                recordBtn.disabled = true;
+                recordBtn.style.display = 'none';
+                stopBtn.style.display = 'inline-block';
                 stopBtn.disabled = false;
                 addMsg('demo', '🎬 Starting ffmpeg (1200x700 from top-left)…');
             } catch (e) {
@@ -1090,8 +1091,9 @@
                     return;
                 }
 
+                recordBtn.style.display = 'inline-block';
+                stopBtn.style.display = 'none';
                 recordBtn.disabled = false;
-                stopBtn.disabled = true;
                 addMsg('demo', '✓ Recording stopped');
             } catch (e) {
                 addMsg('demo', '❌ Error: ' + e.message);
