@@ -403,8 +403,9 @@
             </div>
 
             <div class="button-group">
-                <button class="btn-primary" id="recordBtn" onclick="toggleRecord()">Record</button>
-                <button class="btn-primary" id="uploadBtn" onclick="uploadVideo()" style="display:none;">Upload</button>
+                <button class="btn-primary" onclick="startRecording()">Record</button>
+                <button class="btn-primary" onclick="uploadVideo()" id="uploadBtn" style="display:none;">Upload</button>
+                <button class="btn-secondary" onclick="resetUpload()" id="resetUploadBtn" style="display:none;">Reset Upload</button>
                 <span id="recordStatus"></span>
             </div>
         </header>
@@ -786,54 +787,115 @@
             event.target.classList.add('active');
         }
 
-        // Recording functions
-        async function toggleRecord() {
-            const btn = document.getElementById('recordBtn');
-            const status = document.getElementById('recordStatus');
+        // Recording and Upload functionality
+        let recordStartTime = null;
+        let uploadStartTime = null;
 
-            if (btn.textContent === 'Record') {
-                try {
-                    const response = await fetch(`${API_BASE}/api/record/start`, { method: 'POST' });
-                    if (response.ok) {
-                        btn.textContent = 'Stop';
-                        btn.classList.remove('btn-primary');
-                        btn.classList.add('btn-danger');
-                        status.textContent = 'Recording...';
-                    }
-                } catch (error) {
-                    status.textContent = `Error: ${error.message}`;
+        function formatElapsed(s) {
+            const m = Math.floor(s / 60);
+            return m + ':' + (s % 60 < 10 ? '0' : '') + (s % 60);
+        }
+
+        async function startRecording() {
+            const btn = event.target;
+            btn.disabled = true;
+            const status = document.getElementById('recordStatus');
+            try {
+                const res = await fetch(API_BASE + '/api/record/start', { method: 'POST' });
+                const data = await res.json();
+
+                if (data.error) {
+                    status.textContent = '❌ ' + data.error;
+                    btn.disabled = false;
+                    return;
                 }
-            } else {
-                try {
-                    const response = await fetch(`${API_BASE}/api/record/stop`, { method: 'POST' });
-                    if (response.ok) {
-                        btn.textContent = 'Record';
-                        btn.classList.remove('btn-danger');
-                        btn.classList.add('btn-primary');
-                        document.getElementById('uploadBtn').style.display = 'inline-block';
-                        status.textContent = 'Stopped. Ready to upload.';
+
+                recordStartTime = Date.now();
+                status.textContent = '🎬 Recording... All demos running automatically';
+                btn.disabled = true;
+                btn.style.display = 'none';
+
+                // Poll for recording completion
+                const pollInterval = setInterval(async () => {
+                    try {
+                        const sr = await fetch(API_BASE + '/api/record/status');
+                        const sd = await sr.json();
+
+                        if (sd.status === 'has_recording') {
+                            clearInterval(pollInterval);
+                            const elapsed = Math.floor((Date.now() - recordStartTime) / 1000);
+                            status.textContent = '✅ Recording complete! ' + sd.message + ' (' + formatElapsed(elapsed) + ')';
+                            document.getElementById('uploadBtn').style.display = 'inline-block';
+                            btn.style.display = 'inline-block';
+                            btn.disabled = false;
+                        }
+                    } catch (e) {
+                        console.error('Status poll error:', e);
                     }
-                } catch (error) {
-                    status.textContent = `Error: ${error.message}`;
-                }
+                }, 2000);
+            } catch (e) {
+                status.textContent = '❌ Error: ' + e.message;
+                btn.disabled = false;
             }
         }
 
         async function uploadVideo() {
+            const btn = event.target;
+            btn.disabled = true;
             const status = document.getElementById('recordStatus');
-            status.textContent = 'Uploading...';
-
             try {
-                const response = await fetch(`${API_BASE}/api/upload`, { method: 'POST' });
-                const data = await response.json();
+                const res = await fetch(API_BASE + '/api/upload', { method: 'POST' });
+                const data = await res.json();
 
-                if (data.videoLink) {
-                    status.innerHTML = `✅ Uploaded! <a href="${data.videoLink}" target="_blank">View video</a>`;
-                } else {
-                    status.textContent = 'Upload completed';
+                if (data.error) {
+                    if (res.status === 409) {
+                        status.textContent = '⚠️ Upload already in progress. Click Reset to clear.';
+                        document.getElementById('resetUploadBtn').style.display = 'inline-block';
+                    } else {
+                        status.textContent = '❌ Upload failed: ' + data.error;
+                    }
+                    btn.disabled = false;
+                    return;
                 }
-            } catch (error) {
-                status.textContent = `Error: ${error.message}`;
+
+                uploadStartTime = Date.now();
+                status.textContent = '📤 Uploading ' + data.fileName + '...';
+
+                // Poll for completion
+                const pollInterval = setInterval(async () => {
+                    try {
+                        const sr = await fetch(API_BASE + '/api/upload/status');
+                        const sd = await sr.json();
+
+                        if (sd.status === 'done') {
+                            clearInterval(pollInterval);
+                            const elapsed = Math.floor((Date.now() - uploadStartTime) / 1000);
+                            const link = sd.videoLink || '#';
+                            status.textContent = '✅ Upload complete! ' + formatElapsed(elapsed);
+                            btn.disabled = false;
+                        } else if (sd.status === 'error' || sd.status === 'cancelled') {
+                            clearInterval(pollInterval);
+                            status.textContent = '❌ ' + (sd.status === 'error' ? 'Upload error: ' + sd.error : 'Cancelled');
+                            btn.disabled = false;
+                        }
+                    } catch (e) {
+                        console.error('Status poll error:', e);
+                    }
+                }, 1000);
+            } catch (e) {
+                status.textContent = '❌ Error: ' + e.message;
+                btn.disabled = false;
+            }
+        }
+
+        async function resetUpload() {
+            try {
+                await fetch(API_BASE + '/api/upload/reset', { method: 'GET' });
+                document.getElementById('resetUploadBtn').style.display = 'none';
+                document.getElementById('recordStatus').textContent = '✅ Upload reset.';
+                document.getElementById('uploadBtn').disabled = false;
+            } catch (e) {
+                document.getElementById('recordStatus').textContent = '❌ Reset failed: ' + e.message;
             }
         }
 
