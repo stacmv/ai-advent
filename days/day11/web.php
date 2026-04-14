@@ -481,8 +481,8 @@ if ($method === 'GET' && $path === '/') {
     ]);
 } elseif ($method === 'POST' && $path === '/api/record/start') {
     handleRecordStart(11);
-} elseif ($method === 'GET' && $path === '/api/record/status') {
-    handleRecordStatus(11);
+} elseif ($method === 'POST' && $path === '/api/record/stop') {
+    handleRecordStop();
 } elseif ($method === 'POST' && $path === '/api/upload') {
     handleUpload(11);
 } elseif ($method === 'GET' && $path === '/api/upload/status') {

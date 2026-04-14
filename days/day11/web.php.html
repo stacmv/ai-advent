@@ -387,6 +387,70 @@
             line-height: 1.5;
             color: #666;
         }
+
+        .upload-panel {
+            background: #e8f0fe;
+            border-left: 4px solid #1a73e8;
+            padding: 12px 16px;
+            margin-bottom: 12px;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .upload-bar-wrap {
+            background: #ddd;
+            border-radius: 2px;
+            height: 8px;
+            overflow: hidden;
+            margin: 6px 0;
+        }
+
+        .upload-bar-fill {
+            background: #1a73e8;
+            height: 100%;
+            width: 0%;
+        }
+
+        .upload-bar-fill.done {
+            background: #34a853;
+            animation: none !important;
+        }
+
+        .upload-bar-fill.error {
+            background: #ea4335;
+            animation: none !important;
+        }
+
+        @keyframes upload-pulse {
+            0%, 100% { opacity: 0.4; }
+            50% { opacity: 1; }
+        }
+
+        .upload-stats {
+            color: #666;
+            font-size: 12px;
+        }
+
+        .upload-link {
+            color: #1a73e8;
+            text-decoration: none;
+            word-break: break-all;
+        }
+
+        .upload-link:hover {
+            text-decoration: underline;
+        }
+
+        .upload-error {
+            color: #ea4335;
+        }
+
+        .msg.demo {
+            background: #f9f9f9;
+            padding: 8px;
+            border-radius: 4px;
+            margin: 8px 0;
+        }
     </style>
 </head>
 <body>
@@ -403,10 +467,10 @@
             </div>
 
             <div class="button-group">
-                <button class="btn-primary" onclick="startRecording()">Record</button>
-                <button class="btn-primary" onclick="uploadVideo()" id="uploadBtn" style="display:none;">Upload</button>
-                <button class="btn-secondary" onclick="resetUpload()" id="resetUploadBtn" style="display:none;">Reset Upload</button>
-                <span id="recordStatus"></span>
+                <button class="btn-secondary" id="record-start-btn" onclick="startRecording()">Record</button>
+                <button class="btn-secondary" id="record-stop-btn" onclick="stopRecording()" disabled style="background:#ea4335">Stop</button>
+                <button class="btn-secondary" id="uploadBtn" onclick="uploadVideo()">Upload</button>
+                <button class="btn-secondary" id="upload-reset-btn" onclick="resetUpload()" style="display:none;">Reset Upload</button>
             </div>
         </header>
 
@@ -787,79 +851,140 @@
             event.target.classList.add('active');
         }
 
-        // Recording and Upload functionality
-        let recordStartTime = null;
-        let uploadStartTime = null;
-
-        function formatElapsed(s) {
-            const m = Math.floor(s / 60);
-            return m + ':' + (s % 60 < 10 ? '0' : '') + (s % 60);
-        }
-
+        // Recording and Upload functionality (from day10)
         async function startRecording() {
-            const btn = event.target;
-            btn.disabled = true;
-            const status = document.getElementById('recordStatus');
+            const recordStartBtn = document.getElementById('record-start-btn');
+            const recordStopBtn = document.getElementById('record-stop-btn');
+            recordStartBtn.disabled = true;
+            addMsg('demo', 'Starting ffmpeg (1200x700 from top-left)…');
             try {
                 const res = await fetch(API_BASE + '/api/record/start', { method: 'POST' });
                 const data = await res.json();
-
                 if (data.error) {
-                    status.textContent = '❌ ' + data.error;
-                    btn.disabled = false;
-                    return;
+                    addMsg('error', data.error);
+                    recordStartBtn.disabled = false;
+                } else {
+                    recordStopBtn.disabled = false;
+                    addMsg('demo', 'Recording started – interact normally or click demos');
                 }
-
-                recordStartTime = Date.now();
-                status.textContent = '🎬 Recording... All demos running automatically';
-                btn.disabled = true;
-                btn.style.display = 'none';
-
-                // Poll for recording completion
-                const pollInterval = setInterval(async () => {
-                    try {
-                        const sr = await fetch(API_BASE + '/api/record/status');
-                        const sd = await sr.json();
-
-                        if (sd.status === 'has_recording') {
-                            clearInterval(pollInterval);
-                            const elapsed = Math.floor((Date.now() - recordStartTime) / 1000);
-                            status.textContent = '✅ Recording complete! ' + sd.message + ' (' + formatElapsed(elapsed) + ')';
-                            document.getElementById('uploadBtn').style.display = 'inline-block';
-                            btn.style.display = 'inline-block';
-                            btn.disabled = false;
-                        }
-                    } catch (e) {
-                        console.error('Status poll error:', e);
-                    }
-                }, 2000);
             } catch (e) {
-                status.textContent = '❌ Error: ' + e.message;
-                btn.disabled = false;
+                addMsg('error', e.message);
+                recordStartBtn.disabled = false;
+            }
+        }
+
+        async function stopRecording() {
+            const recordStartBtn = document.getElementById('record-start-btn');
+            const recordStopBtn = document.getElementById('record-stop-btn');
+            recordStopBtn.disabled = true;
+            recordStartBtn.disabled = true;
+            addMsg('demo', 'Stopping recording…');
+            try {
+                await fetch(API_BASE + '/api/record/stop', { method: 'POST' });
+                recordStartBtn.disabled = false;
+                recordStopBtn.disabled = true;
+                addMsg('demo', 'Recording stopped');
+            } catch (e) {
+                addMsg('error', e.message);
+                recordStartBtn.disabled = false;
+                recordStopBtn.disabled = false;
+            }
+        }
+
+        let uploadPanelEl = null;
+        let uploadStartTime = null;
+        let uploadTimerInterval = null;
+
+        function formatElapsed(seconds) {
+            const m = Math.floor(seconds / 60);
+            const s = Math.floor(seconds % 60);
+            return m + ':' + (s < 10 ? '0' : '') + s;
+        }
+
+        function addMsg(role, text) {
+            const chatLog = document.getElementById('chatLog');
+            if (!chatLog) return;
+            const div = document.createElement('div');
+            div.className = 'msg ' + role;
+            const labels = { user: 'You:', agent: 'Agent:', error: 'Error:', demo: 'Demo:', info: 'Info:' };
+            const label = labels[role] || role + ':';
+            div.innerHTML = '<span class="label">' + label + '</span><span class="text">' + text + '</span>';
+            chatLog.appendChild(div);
+            chatLog.scrollTop = chatLog.scrollHeight;
+        }
+
+        function createUploadPanel(fileName, fileSize) {
+            const chatLog = document.getElementById('chatLog');
+            if (uploadPanelEl) uploadPanelEl.remove();
+            uploadPanelEl = document.createElement('div');
+            uploadPanelEl.className = 'msg demo upload-panel';
+            uploadPanelEl.innerHTML = '<span class="label">Upload:</span>'
+                + '<div class="up-filename"></div>'
+                + '<div class="upload-bar-wrap"><div class="upload-bar-fill"></div></div>'
+                + '<div class="upload-stats"></div>'
+                + '<div class="upload-extra"></div>';
+            uploadPanelEl.querySelector('.up-filename').textContent = fileName + ' (' + fileSize + ')';
+            chatLog.appendChild(uploadPanelEl);
+            chatLog.scrollTop = chatLog.scrollHeight;
+
+            uploadStartTime = Date.now();
+            const bar = uploadPanelEl.querySelector('.upload-bar-fill');
+            const stats = uploadPanelEl.querySelector('.upload-stats');
+            bar.style.width = '100%';
+            bar.style.animation = 'upload-pulse 1.5s ease-in-out infinite';
+            stats.textContent = 'Uploading… 0:00';
+            uploadTimerInterval = setInterval(() => {
+                const elapsed = Math.floor((Date.now() - uploadStartTime) / 1000);
+                stats.textContent = 'Uploading… ' + formatElapsed(elapsed);
+            }, 1000);
+        }
+
+        function finishUploadPanel(status, data) {
+            if (uploadTimerInterval) clearInterval(uploadTimerInterval);
+            uploadTimerInterval = null;
+            if (!uploadPanelEl) return;
+            const bar = uploadPanelEl.querySelector('.upload-bar-fill');
+            const stats = uploadPanelEl.querySelector('.upload-stats');
+            const extra = uploadPanelEl.querySelector('.upload-extra');
+            bar.style.animation = 'none';
+            const elapsed = uploadStartTime ? formatElapsed(Math.floor((Date.now() - uploadStartTime) / 1000)) : '--';
+
+            if (status === 'done') {
+                bar.className = 'upload-bar-fill done';
+                bar.style.width = '100%';
+                const codeLink = data.codeLink || 'https://github.com/stacmv/ai-advent/tree/day11';
+                const videoLink = data.videoLink || '(not available)';
+                stats.textContent = 'Upload complete — ' + elapsed;
+                extra.innerHTML = '<div style="margin-top:6px"><div>Код: <a href="' + codeLink + '" target="_blank" class="upload-link">' + codeLink + '</a></div>'
+                    + '<div>Видео: <a href="' + videoLink + '" target="_blank" class="upload-link">' + videoLink + '</a></div></div>';
+            } else if (status === 'error') {
+                bar.className = 'upload-bar-fill error';
+                stats.innerHTML = '<span class="upload-error">Error: ' + (data.error || 'unknown') + '</span>';
+            } else if (status === 'cancelled') {
+                bar.className = 'upload-bar-fill error';
+                stats.innerHTML = '<span class="upload-error">Cancelled</span>';
             }
         }
 
         async function uploadVideo() {
-            const btn = event.target;
-            btn.disabled = true;
-            const status = document.getElementById('recordStatus');
+            const uploadBtn = document.getElementById('uploadBtn');
+            uploadBtn.disabled = true;
             try {
                 const res = await fetch(API_BASE + '/api/upload', { method: 'POST' });
                 const data = await res.json();
 
                 if (data.error) {
                     if (res.status === 409) {
-                        status.textContent = '⚠️ Upload already in progress. Click Reset to clear.';
-                        document.getElementById('resetUploadBtn').style.display = 'inline-block';
+                        addMsg('error', 'Upload in progress. Click "Reset Upload" to force-clear.');
+                        document.getElementById('upload-reset-btn').style.display = 'inline-block';
                     } else {
-                        status.textContent = '❌ Upload failed: ' + data.error;
+                        addMsg('error', 'Upload failed: ' + data.error);
                     }
-                    btn.disabled = false;
+                    uploadBtn.disabled = false;
                     return;
                 }
 
-                uploadStartTime = Date.now();
-                status.textContent = '📤 Uploading ' + data.fileName + '...';
+                createUploadPanel(data.fileName, data.fileSizeFormatted || '');
 
                 // Poll for completion
                 const pollInterval = setInterval(async () => {
@@ -869,33 +994,34 @@
 
                         if (sd.status === 'done') {
                             clearInterval(pollInterval);
-                            const elapsed = Math.floor((Date.now() - uploadStartTime) / 1000);
-                            const link = sd.videoLink || '#';
-                            status.textContent = '✅ Upload complete! ' + formatElapsed(elapsed);
-                            btn.disabled = false;
+                            finishUploadPanel('done', sd);
+                            uploadBtn.disabled = false;
                         } else if (sd.status === 'error' || sd.status === 'cancelled') {
                             clearInterval(pollInterval);
-                            status.textContent = '❌ ' + (sd.status === 'error' ? 'Upload error: ' + sd.error : 'Cancelled');
-                            btn.disabled = false;
+                            finishUploadPanel(sd.status, sd);
+                            uploadBtn.disabled = false;
                         }
                     } catch (e) {
                         console.error('Status poll error:', e);
                     }
                 }, 1000);
             } catch (e) {
-                status.textContent = '❌ Error: ' + e.message;
-                btn.disabled = false;
+                addMsg('error', 'Upload error: ' + e.message);
+                uploadBtn.disabled = false;
             }
         }
 
         async function resetUpload() {
             try {
                 await fetch(API_BASE + '/api/upload/reset', { method: 'GET' });
-                document.getElementById('resetUploadBtn').style.display = 'none';
-                document.getElementById('recordStatus').textContent = '✅ Upload reset.';
+                if (uploadTimerInterval) clearInterval(uploadTimerInterval);
+                if (uploadPanelEl) uploadPanelEl.remove();
+                uploadPanelEl = null;
+                document.getElementById('upload-reset-btn').style.display = 'none';
                 document.getElementById('uploadBtn').disabled = false;
+                addMsg('info', 'Upload reset.');
             } catch (e) {
-                document.getElementById('recordStatus').textContent = '❌ Reset failed: ' + e.message;
+                addMsg('error', 'Reset failed: ' + e.message);
             }
         }
 
