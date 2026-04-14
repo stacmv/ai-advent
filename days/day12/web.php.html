@@ -1053,72 +1053,70 @@
 
         async function startRecording() {
             const recordBtn = document.querySelector('[onclick="startRecording()"]');
+            const stopBtn = document.getElementById('stop-record-btn');
             recordBtn.disabled = true;
             try {
-                const res = await fetch('/api/record/start', { method: 'POST' });
+                const res = await fetch(`${API_BASE}/api/record/start`, { method: 'POST' });
                 const data = await res.json();
 
                 if (data.error) {
-                    demoProgress.innerHTML = '<p style="color:red">Recording failed: ' + data.error + '</p>';
+                    addMsg('demo', '❌ Recording failed: ' + data.error);
                     recordBtn.disabled = false;
                     return;
                 }
 
                 recordStartTime = Date.now();
-                recordBtn.style.display = 'none';
-                document.getElementById('stop-record-btn').style.display = 'inline-block';
-                demoProgress.innerHTML = '<p>🎬 ' + data.message + '</p><p style="color:#666;font-size:12px">This runs all demo cases automatically...</p>';
-
-                // Poll for recording completion
-                const pollInterval = setInterval(async () => {
-                    try {
-                        const sr = await fetch('/api/record/status');
-                        const sd = await sr.json();
-
-                        if (sd.status === 'has_recording') {
-                            clearInterval(pollInterval);
-                            document.getElementById('stop-record-btn').style.display = 'none';
-                            recordBtn.style.display = 'inline-block';
-                            recordBtn.disabled = false;
-                            const elapsed = Math.floor((Date.now() - recordStartTime) / 1000);
-                            demoProgress.innerHTML = '<p>✓ Recording complete!</p><p>' + sd.message + '</p><p style="color:#666;font-size:12px">Time: ' + formatElapsed(elapsed) + '</p>';
-                        }
-                    } catch (e) {
-                        console.error('Status poll error:', e);
-                    }
-                }, 2000);
+                recordBtn.disabled = true;
+                stopBtn.disabled = false;
+                addMsg('demo', '🎬 Starting ffmpeg (1200x700 from top-left)…');
             } catch (e) {
-                demoProgress.innerHTML = '<p style="color:red">Error: ' + e.message + '</p>';
+                addMsg('demo', '❌ Error: ' + e.message);
                 recordBtn.disabled = false;
             }
         }
 
         async function stopRecording() {
-            // Recording runs to completion automatically, just show status
+            const recordBtn = document.querySelector('[onclick="startRecording()"]');
+            const stopBtn = document.getElementById('stop-record-btn');
+            stopBtn.disabled = true;
             try {
-                const res = await fetch('/api/record/status');
+                addMsg('demo', '⏹️ Stopping recording…');
+                const res = await fetch(`${API_BASE}/api/record/stop`, { method: 'POST' });
                 const data = await res.json();
-                document.getElementById('stop-record-btn').style.display = 'none';
-                document.querySelector('[onclick="startRecording()"]').style.display = 'inline-block';
-                demoProgress.innerHTML = '<p>✓ Recording status: ' + data.message + '</p>';
+
+                if (data.error) {
+                    addMsg('demo', '❌ Stop failed: ' + data.error);
+                    stopBtn.disabled = false;
+                    return;
+                }
+
+                recordBtn.disabled = false;
+                stopBtn.disabled = true;
+                addMsg('demo', '✓ Recording stopped');
             } catch (e) {
-                demoProgress.innerHTML = '<p style="color:red">Error: ' + e.message + '</p>';
+                addMsg('demo', '❌ Error: ' + e.message);
+                stopBtn.disabled = false;
             }
+        }
+
+        function addMsg(role, text) {
+            const chatLog = document.getElementById('chatLog');
+            appendMessage(role, text);
         }
 
         async function uploadVideo() {
             const uploadBtn = event.target;
             uploadBtn.disabled = true;
             try {
-                const res = await fetch('/api/upload', { method: 'POST' });
+                const res = await fetch(`${API_BASE}/api/upload`, { method: 'POST' });
                 const data = await res.json();
 
                 if (data.error) {
                     if (res.status === 409) {
-                        demoProgress.innerHTML = '<p style="color:red">Upload in progress. Click "Reset Upload" to force-clear.</p>';
+                        addMsg('demo', '❌ Upload in progress. Click "Reset Upload" to force-clear.');
                         document.getElementById('reset-upload-btn').style.display = 'inline-block';
                     } else {
-                        demoProgress.innerHTML = '<p style="color:red">Upload failed: ' + data.error + '</p>';
+                        addMsg('demo', '❌ Upload failed: ' + data.error);
                     }
                     uploadBtn.disabled = false;
                     return;
@@ -1129,7 +1127,7 @@
                 // Poll for completion
                 const pollInterval = setInterval(async () => {
                     try {
-                        const sr = await fetch('/api/upload/status');
+                        const sr = await fetch(`${API_BASE}/api/upload/status`);
                         const sd = await sr.json();
 
                         if (sd.status === 'done') {
@@ -1148,7 +1146,7 @@
                     }
                 }, 1000);
             } catch (e) {
-                demoProgress.innerHTML = '<p style="color:red">Upload error: ' + e.message + '</p>';
+                addMsg('demo', '❌ Upload error: ' + e.message);
                 uploadBtn.disabled = false;
             }
         }
@@ -1221,15 +1219,15 @@
 
         async function resetUpload() {
             try {
-                await fetch('/api/upload/reset', { method: 'GET' });
+                await fetch(`${API_BASE}/api/upload/reset`, { method: 'POST' });
                 if (uploadTimerInterval) clearInterval(uploadTimerInterval);
                 if (uploadPanelEl) uploadPanelEl.remove();
                 uploadPanelEl = null;
                 document.getElementById('reset-upload-btn').style.display = 'none';
                 document.querySelector('[onclick="uploadVideo()"]').disabled = false;
-                demoProgress.innerHTML = '<p>✓ Upload reset.</p>';
+                addMsg('demo', '✓ Upload reset.');
             } catch (e) {
-                demoProgress.innerHTML = '<p style="color:red">Reset failed: ' + e.message + '</p>';
+                addMsg('demo', '❌ Reset failed: ' + e.message);
             }
         }
     </script>

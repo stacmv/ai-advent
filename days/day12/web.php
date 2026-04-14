@@ -1,6 +1,7 @@
 <?php
 
 require __DIR__ . '/../../vendor/autoload.php';
+require __DIR__ . '/../../tools/record_upload_handlers.php';
 
 use AiAdvent\LLMClient;
 
@@ -707,222 +708,18 @@ if ($method === 'GET' && $path === '/') {
         'results' => $results
     ]);
 } elseif ($method === 'POST' && $path === '/api/record/start') {
-    handleRecordStart();
-} elseif ($method === 'GET' && $path === '/api/record/status') {
-    handleRecordStatus();
+    handleRecordStart(12);
+} elseif ($method === 'POST' && $path === '/api/record/stop') {
+    handleRecordStop();
 } elseif ($method === 'POST' && $path === '/api/upload') {
-    handleUpload();
+    handleUpload(12);
 } elseif ($method === 'GET' && $path === '/api/upload/status') {
     handleUploadStatus();
 } elseif ($method === 'POST' && $path === '/api/upload/cancel') {
     handleUploadCancel();
-} elseif ($method === 'GET' && $path === '/api/upload/reset') {
+} elseif ($method === 'POST' && $path === '/api/upload/reset') {
     handleUploadReset();
 } else {
     http_response_code(404);
     echo json_encode(['error' => 'Not found']);
-}
-
-function handleRecordStart()
-{
-    try {
-        $storageDir = realpath(__DIR__ . '/../../storage') ?: __DIR__ . '/../../storage';
-        $recordPidFile = $storageDir . '/record.pid';
-
-        if (!is_dir($storageDir)) {
-            mkdir($storageDir, 0755, true);
-        }
-
-        // Check if recording already in progress
-        if (file_exists($recordPidFile)) {
-            $oldPid = (int) @file_get_contents($recordPidFile);
-            if ($oldPid > 0) {
-                $out = [];
-                exec('tasklist /FI "PID eq ' . $oldPid . '" /NH 2>NUL', $out);
-                if (!empty($out) && strpos(implode('', $out), (string) $oldPid) !== false) {
-                    http_response_code(409);
-                    echo json_encode(['error' => 'Recording already in progress']);
-                    return;
-                }
-            }
-            @unlink($recordPidFile);
-        }
-
-        // Spawn background recording process
-        $script = __DIR__ . '/../../tools/record.php';
-        $cmd = 'php ' . escapeshellarg($script) . ' --day=12';
-        pclose(popen('start /B ' . $cmd . ' >NUL 2>&1', 'r'));
-
-        // Give it a moment to start
-        usleep(500000);
-
-        // Try to detect the ffmpeg PID if available
-        echo json_encode([
-            'status' => 'recording_started',
-            'message' => 'Recording started. Running demo cases...'
-        ]);
-    } catch (Exception $e) {
-        http_response_code(500);
-        echo json_encode(['error' => $e->getMessage()]);
-    }
-}
-
-function handleRecordStatus()
-{
-    try {
-        $recordingsDir = realpath(__DIR__ . '/../../recordings') ?: __DIR__ . '/../../recordings';
-
-        if (!is_dir($recordingsDir)) {
-            echo json_encode(['status' => 'idle', 'message' => 'No recordings directory']);
-            return;
-        }
-
-        // Check for latest day12 video
-        $files = scandir($recordingsDir, SCANDIR_SORT_DESCENDING);
-        $dayVideos = array_filter($files, function ($f) {
-            return preg_match('/day12_.*\.mp4$/', $f);
-        });
-
-        if (!empty($dayVideos)) {
-            $latest = reset($dayVideos);
-            $filePath = "{$recordingsDir}/{$latest}";
-            $size = filesize($filePath);
-            $mtime = filemtime($filePath);
-            $age = time() - $mtime;
-
-            echo json_encode([
-                'status' => 'has_recording',
-                'fileName' => $latest,
-                'fileSize' => $size,
-                'age' => $age,
-                'message' => 'Latest recording: ' . $latest . ' (' . round($size / 1024 / 1024, 1) . ' MB)'
-            ]);
-        } else {
-            echo json_encode(['status' => 'idle', 'message' => 'No day12 recordings found']);
-        }
-    } catch (Exception $e) {
-        http_response_code(500);
-        echo json_encode(['error' => $e->getMessage()]);
-    }
-}
-
-function handleUpload()
-{
-    try {
-        $recordingsDir = realpath(__DIR__ . '/../../recordings') ?: __DIR__ . '/../../recordings';
-        $storageDir = realpath(__DIR__ . '/../../storage') ?: __DIR__ . '/../../storage';
-        $progressFile = $storageDir . '/upload_progress.json';
-        $pidFile = $storageDir . '/upload_progress.pid';
-
-        if (!is_dir($storageDir)) {
-            mkdir($storageDir, 0755, true);
-        }
-
-        if (!is_dir($recordingsDir)) {
-            http_response_code(400);
-            echo json_encode(['error' => 'No recordings directory found']);
-            return;
-        }
-
-        // Check if upload already in progress — is the PID alive?
-        if (file_exists($pidFile)) {
-            $pid = (int) @file_get_contents($pidFile);
-            if ($pid > 0) {
-                $out = [];
-                exec('tasklist /FI "PID eq ' . $pid . '" /NH 2>NUL', $out);
-                if (!empty($out) && strpos(implode('', $out), (string) $pid) !== false) {
-                    http_response_code(409);
-                    echo json_encode(['error' => 'Upload already in progress']);
-                    return;
-                }
-            }
-            // Dead PID — clean up
-            @unlink($pidFile);
-            @unlink($progressFile);
-        }
-
-        // Find latest day12 video
-        $files = scandir($recordingsDir, SCANDIR_SORT_DESCENDING);
-        $dayVideos = array_filter($files, function ($f) {
-            return preg_match('/day12_.*\.mp4$/', $f);
-        });
-
-        if (empty($dayVideos)) {
-            http_response_code(400);
-            echo json_encode(['error' => 'No recordings found for day 12']);
-            return;
-        }
-
-        $latestFile = reset($dayVideos);
-        $filePath = "{$recordingsDir}/{$latestFile}";
-        $fSize = filesize($filePath);
-        $units = ['B', 'KB', 'MB', 'GB'];
-        $b = max($fSize, 0);
-        $p = floor(($b ? log($b) : 0) / log(1024));
-        $p = min($p, count($units) - 1);
-        $b /= (1 << (10 * $p));
-        $fileSizeFormatted = round($b, 2) . ' ' . $units[$p];
-
-        // Clean any leftover state
-        @unlink($progressFile);
-        @unlink($pidFile);
-
-        // Spawn background: exact same path as `make upload`
-        $script = __DIR__ . '/../../tools/upload_progress.php';
-        $cmd = 'php ' . escapeshellarg($script) . ' 12 ' . escapeshellarg($storageDir);
-        pclose(popen('start /B ' . $cmd . ' >NUL 2>&1', 'r'));
-
-        echo json_encode([
-            'status' => 'started',
-            'fileName' => $latestFile,
-            'fileSizeFormatted' => $fileSizeFormatted,
-        ]);
-    } catch (Exception $e) {
-        http_response_code(500);
-        echo json_encode(['error' => $e->getMessage()]);
-    }
-}
-
-function handleUploadStatus()
-{
-    try {
-        $storageDir = realpath(__DIR__ . '/../../storage') ?: __DIR__ . '/../../storage';
-        $progressFile = $storageDir . '/upload_progress.json';
-
-        if (file_exists($progressFile)) {
-            $data = json_decode(file_get_contents($progressFile), true);
-            echo json_encode($data);
-        } else {
-            echo json_encode(['status' => 'idle']);
-        }
-    } catch (Exception $e) {
-        http_response_code(500);
-        echo json_encode(['error' => $e->getMessage()]);
-    }
-}
-
-function killUploadProcess()
-{
-    $storageDir = realpath(__DIR__ . '/../../storage') ?: __DIR__ . '/../../storage';
-    $pidFile = $storageDir . '/upload_progress.pid';
-    $progressFile = $storageDir . '/upload_progress.json';
-
-    $pid = @file_get_contents($pidFile);
-    if ($pid) {
-        exec('taskkill /F /T /PID ' . (int) $pid . ' 2>NUL');
-    }
-    @unlink($pidFile);
-    @unlink($progressFile);
-}
-
-function handleUploadCancel()
-{
-    killUploadProcess();
-    echo json_encode(['status' => 'cancelled']);
-}
-
-function handleUploadReset()
-{
-    killUploadProcess();
-    echo json_encode(['status' => 'reset']);
 }
